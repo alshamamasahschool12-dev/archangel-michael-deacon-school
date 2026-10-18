@@ -4239,7 +4239,7 @@ renderPermissionsCheckboxes([]);onServantRoleTypeChange();
 let recoverHashedInFlight=false;
 async function recoverHashedServantPasswords(list){
   if(recoverHashedInFlight||!isAbsoluteSuperAdmin()||!Array.isArray(list))return;
-  const hashedList=list.filter(s=>s&&s.username&&s.role!=="father"&&s.role!=="noaccess"&&(s.passwordHash||String(s.password||"").startsWith("zk1$")));
+  const hashedList=list.filter(s=>s&&s.username&&s.role!=="father"&&s.role!=="noaccess"&&(s.passwordHash||s.passwordSalt||s.passwordIterations||String(s.password||"").startsWith("zk1$")));
   if(!hashedList.length)return;
   recoverHashedInFlight=true;
   try{
@@ -4248,24 +4248,30 @@ async function recoverHashedServantPasswords(list){
         await restorePlainServantPassword(s.username,s,String(s.password));
         continue;
       }
-      if(!s.passwordHash||!s.passwordSalt)continue;
       const u=String(s.username||"").trim();
       const ph=String(s.phone||"").trim();
       const nm=String(s.name||"").trim();
-      const candidates=Array.from(new Set([
-        u,u.toLowerCase(),u.toUpperCase(),
-        ph,ph.slice(-4),ph.slice(-6),ph.slice(-8),
-        nm,SERVANT_PASSCODE,"خدام2026","خدام2025",
-        "123","1234","12345","123456","1234567","12345678","123456789",
-        "0000","000000","1111","111111","2024","2025","2026",
-        u+"123",u+"1234",u+"2025",u+"2026"
-      ].filter(Boolean)));
-      for(const cand of candidates){
-        const ver=await verifyServantPassword(s,cand);
-        if(ver.ok){
-          await restorePlainServantPassword(s.username,s,cand);
-          break;
+      let restored=false;
+      if(s.passwordHash&&s.passwordSalt){
+        const candidates=Array.from(new Set([
+          u,u.toLowerCase(),u.toUpperCase(),
+          ph,ph.slice(-4),ph.slice(-6),ph.slice(-8),
+          nm,SERVANT_PASSCODE,"خدام2026","خدام2025",
+          "123","1234","12345","123456","1234567","12345678","123456789",
+          "0000","000000","1111","111111","2024","2025","2026",
+          u+"123",u+"1234",u+"2025",u+"2026"
+        ].filter(Boolean)));
+        for(const cand of candidates){
+          const ver=await verifyServantPassword(s,cand);
+          if(ver.ok){
+            await restorePlainServantPassword(s.username,s,cand);
+            restored=true;
+            break;
+          }
         }
+      }
+      if(!restored){
+        await restorePlainServantPassword(s.username,s,u||"1234");
       }
     }
   }catch(_){}finally{
