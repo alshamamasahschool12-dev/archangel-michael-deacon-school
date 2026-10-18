@@ -34,7 +34,7 @@ const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 const APPROVAL_MS = 5 * MINUTE;   // مهلة قرار مسؤول الموافقة
-const ACCESS_MS = 20 * MINUTE;    // مدة فتح تعديل الأيام السابقة بعد الموافقة
+const ACCESS_MS = 30 * MINUTE;    // مدة فتح تعديل الأيام السابقة بعد الموافقة
 const SESSION_MS = 12 * HOUR;     // مدة جلسة الخدمة بعد تسجيل الدخول
 const KEEP_MS = 3 * DAY;          // الطلبات الأقدم من كده بتتمسح تلقائيًا
 const RECENT_MS = DAY;            // الطلبات اللي بترجع للصفحة
@@ -546,7 +546,7 @@ async function approvers(ctx) {
 
 async function ownerGrant(ctx) {
   const { cfg, me } = ctx;
-  if (!me.isOwner) throw new ApiError(403, 'الفتح المباشر من غير موافقة لإدارة السيستم بس.');
+  if (!me.isOwner) throw new ApiError(403, 'الفتح المباشر من غير موافقة لمدير السيستم بس.');
   const now = Date.now();
   const all = await loadRequests(cfg);
   const running = requestList(cfg, all).find((r) => r.username === me.uname && isRunning(cfg, r, now));
@@ -561,7 +561,7 @@ async function ownerGrant(ctx) {
   rec.sig0 = originSig(cfg, rec);
   rec.sig = grantSig(cfg, rec);
   const updates = Object.assign(pruneUpdates(cfg, all, now), { [PATHS.requests + '/' + id]: rec },
-    logEntry(me, 'فتح تعديل الحضور السابق مباشرة', 'إدارة السيستم فتحت تعديل الأيام السابقة لنفسها لمدة ٢٠ دقيقة (لحد ' + cairoTime(rec.accessUntil) + ').', now));
+    logEntry(me, 'فتح تعديل الحضور السابق مباشرة', 'مدير السيستم فتح تعديل الأيام السابقة لنفسه لمدة ٣٠ دقيقة (لحد ' + cairoTime(rec.accessUntil) + ').', now));
   await dbPatch(cfg, '', updates);
   await bumpLogCount(cfg);
   return { id, request: view(cfg, rec, now) };
@@ -602,7 +602,7 @@ async function request(ctx) {
   };
   rec.sig0 = originSig(cfg, rec);
   const updates = Object.assign(pruneUpdates(cfg, all, now), { [PATHS.requests + '/' + id]: rec },
-    logEntry(me, 'طلب فتح الحضور', 'طلب من ' + ap.name + ' (@' + ap.uname + ') فتح تعديل الحضور السابق لمدة ٢٠ دقيقة.', now));
+    logEntry(me, 'طلب فتح الحضور', 'طلب من ' + ap.name + ' (@' + ap.uname + ') فتح تعديل الحضور السابق لمدة ٣٠ دقيقة.', now));
   await dbPatch(cfg, '', updates);
   await bumpLogCount(cfg);
   return { id, request: view(cfg, rec, now) };
@@ -717,7 +717,7 @@ function describeChange(p, changed, grant) {
   const items = changed.slice(0, 12).map((n) => n + ': ' + (p.patch[n] === null ? 'اتشال' : (STATUS_AR[p.patch[n]] || String(p.patch[n]))));
   const more = changed.length > 12 ? ' … و' + (changed.length - 12) + ' كمان' : '';
   let via = '';
-  if (grant) via = grant.kind === 'owner' ? ' (فتح مباشر من إدارة السيستم)' : ' (بموافقة ' + (grant.decidedByName || grant.approverName || '') + ')';
+  if (grant) via = grant.kind === 'owner' ? ' (فتح مباشر من مدير السيستم)' : ' (بموافقة ' + (grant.decidedByName || grant.approverName || '') + ')';
   return level + cls + ' يوم ' + p.date + via + ': ' + items.join('، ') + more;
 }
 
@@ -737,7 +737,7 @@ async function saveOperation(ctx, todayMode) {
     if (isObj(done)) return { duplicate: true, key: done.key, changed: done.changed || 0, accessUntil: grant.accessUntil };
     if (grant.status === 'revoked') throw new ApiError(409, 'الموافقة اتسحبت، وتعديل الأيام السابقة اتقفل. اطلب موافقة جديدة.');
     if (grant.status !== 'active' && grant.status !== 'saving') throw new ApiError(409, 'الطلب ده لسه مش متوافق عليه أو اتقفل — تعديل الأيام السابقة غير متاح.');
-    if (!(Number(grant.accessUntil) > now)) throw new ApiError(409, 'انتهت الـ٢٠ دقيقة بتاعة فتح الحضور. اطلب موافقة جديدة.');
+    if (!(Number(grant.accessUntil) > now)) throw new ApiError(409, 'انتهت الـ٣٠ دقيقة بتاعة فتح الحضور. اطلب موافقة جديدة.');
     if (!grantOk(cfg, grant)) throw new ApiError(403, 'إذن فتح الحضور ده غير صحيح (التوقيع مش مطابق). اطلب موافقة جديدة.');
     if (!me.canRequest) throw new ApiError(403, 'صلاحية «طلب فتح الحضور» غير مفعلة لحسابك دلوقتي.');
     if (!(p.date < today)) throw new ApiError(400, 'التاريخ ده مش يوم سابق — حضور النهاردة بيتسجل عادي من غير موافقة.');
