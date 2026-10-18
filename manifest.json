@@ -1,0 +1,17 @@
+{
+  "name": "مدرسة الملاك ميخائيل للشمامسة",
+  "short_name": "الشمامسة",
+  "description": "مدرسة الملاك ميخائيل للشمامسة — كنيسة الملاك ميخائيل عزبة النخل بالأندلس",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#1a3a3a",
+  "theme_color": "#7a1257",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" }
+  ]
+}
