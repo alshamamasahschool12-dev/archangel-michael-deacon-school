@@ -14111,4 +14111,1021 @@ html.dark #offline-sync-modal .osm-item{
     openDetails: openModal
   };
 })();
-</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4ca7fa8181c50f2',t:'MTc5MjM1NzUwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body> </html>
+</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4ca7fa8181c50f2',t:'MTc5MjM1NzUwMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+<script id="hayaty-mass-two-addon">
+/* ═══════════════════════════════════════════════════════════════════════════
+   🌿✝️ إضافة «القداسين» — القداس الأولاني والقداس التاني — حياتي في قداسي
+   ──────────────────────────────────────────────────────────────────────────
+   الفكر:
+   · كل مخدوم له قداس ثابت (massGroup: first | second) يتخزن في سجله:
+       shamamsa/{id}/massGroup
+   · في تاب «حياتي في قداسي ← ✝️ القداس» بيظهر اختيار: القداسين معًا / الأولاني / التاني.
+   · لو حد من بتوع القداس الأولاني حضر التاني (تبديل) — سجّله حاضر عادي من شاشته،
+     المهم إنه حضر — زي ما النظام الأصلي شغال بالظبط (مفيش أي تغيير في طريقة التسجيل).
+   · جنب كل اسم: قراءاته (قرا إيه بتاريخ إيه) + نسبة جودة القراءة من ١٠٠
+     (النجوم ⭐ = الجودة: كل نجمة ٢٠٪).
+   · «كشف لجنة القراءات» PDF للقداسين مع بعض عشان اللجنة تختار الناس المواظبة تقرأ.
+   · كل ده مضاف في سكربت منفصل من غير أي تعديل في الكود الأصلي — لو اتشال السكربت
+     ده الصفحة ترجع زي ما كانت بالظبط.
+   ═══════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  /* ─────────────── 1) الثوابت والحالة ─────────────── */
+  var MASS_VIEW_KEY = 'shamamsa-mass-view';
+  var MASS_GROUP_LABELS = { first: 'القداس الأولاني', second: 'القداس التاني' };
+  var massAttMassFilter = 'all';   // فلتر القداس في شاشة تسجيل اليوم: all | first | second
+  var massAttReportMass = 'all';   // فلتر القداس في تقرير الحضور
+  try {
+    var __savedMass = localStorage.getItem(MASS_VIEW_KEY);
+    if (__savedMass === 'first' || __savedMass === 'second') massAttMassFilter = __savedMass;
+  } catch (e) {}
+
+  function recordMassGroupOf(r) {
+    return (r && (r.massGroup === 'first' || r.massGroup === 'second')) ? r.massGroup : '';
+  }
+
+  /* نسبة الجودة من ١٠٠: كل نجمة = ٢٠٪ */
+  function readingRatingPct(rating) { return rating > 0 ? Math.round(rating * 20) : null; }
+
+  /* ─────────────── 2) CSS ─────────────── */
+  var ADDON_CSS = [
+    '/* ═══ إضافة القداسين ═══ */',
+    '.mass-manage-row{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}',
+    '.mass-manage-hint{font-size:.75rem;font-weight:800;color:#b45309;line-height:1.6}',
+    '.mass-manage-hint:empty{display:none}',
+    '.mass-quick{display:inline-flex;gap:4px;flex-shrink:0;align-items:center}',
+    '.mass-quick .mass-q-lbl{font-size:.62rem;font-weight:900;color:var(--text-sub,#6b5a42);opacity:.7}',
+    '.mass-q-btn{width:30px;height:30px;border-radius:9px;border:1.5px solid var(--card-border,#e3d5b3);background:var(--bg-card,#fffdf9);color:var(--text-sub,#6b5a42);font-weight:900;font-size:.85rem;cursor:pointer;font-family:var(--app-font);padding:0;line-height:1}',
+    '.mass-q-btn:hover{transform:scale(1.06)}',
+    '.mass-q-btn.first.active{background:linear-gradient(135deg,#1d4ed8,#3b82f6);border-color:#1d4ed8;color:#fff}',
+    '.mass-q-btn.second.active{background:linear-gradient(135deg,#7c3aed,#a855f7);border-color:#7c3aed;color:#fff}',
+    '.mass-readings-strip{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px;padding-top:8px;border-top:1px dashed var(--card-border,#e3d5b3);font-size:.75rem;font-weight:700}',
+    '.mr-pct{padding:2px 10px;border-radius:999px;font-weight:800;white-space:nowrap}',
+    '.mr-pct.good{background:rgba(34,197,94,.14);color:#15803d}',
+    '.mr-pct.mid{background:rgba(217,119,6,.15);color:#b45309}',
+    '.mr-pct.weak{background:rgba(224,54,54,.12);color:#b91c1c}',
+    '.mr-pct.none,.mr-none,.mr-loading{color:var(--text-sub,#6b5a42);opacity:.75;font-weight:700}',
+    '.mr-count{color:var(--text-main,#2c1b10);white-space:nowrap}',
+    '.mr-last{color:var(--text-sub,#6b5a42)}',
+    '.mr-toggle{border:none;background:none;color:var(--indigo,#4f46e5);font-weight:800;cursor:pointer;font-size:.73rem;font-family:var(--app-font);text-decoration:underline;padding:2px 4px;white-space:nowrap}',
+    '.mr-toggle::after{content:" ▾"}',
+    '.mass-readings-strip.open .mr-toggle::after{content:" ▴"}',
+    '.mr-entries{display:none;flex-direction:column;gap:6px;width:100%;max-height:220px;overflow:auto;padding:8px 10px;background:var(--gold-soft,#faf3df);border-radius:12px;border:1px solid var(--card-border,#e3d5b3)}',
+    '.mass-readings-strip.open .mr-entries{display:flex}',
+    '.mr-entry{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.73rem}',
+    '.mr-type{font-weight:800;color:var(--text-main,#2c1b10)}',
+    '.mr-date{color:var(--text-sub,#6b5a42)}',
+    '.mr-star{color:#d7d0ba;font-size:.82rem}',
+    '.mr-star.on{color:#f0b429}',
+    '.mr-entry-pct{color:#b45309;font-weight:900}',
+    '.mr-entry-norate{opacity:.55;font-weight:700}',
+    '.rr-pct{font-weight:900;font-size:.72rem;margin-inline-start:7px;color:#b45309;white-space:nowrap}',
+    '.rr-pct.none{opacity:.45;color:var(--text-sub,#6b5a42)}',
+    '.att-report-beh.quality{background:rgba(79,70,229,.12);color:#4f46e5;white-space:nowrap}',
+    '.att-report-beh.quality.none{background:transparent}',
+    '.mass-assign-note{font-size:.72rem;font-weight:700;color:var(--text-sub,#6b5a42);margin-top:6px;line-height:1.7}',
+    '/* مودال التوزيع */',
+    '.ma-box{max-width:580px}',
+    '.ma-sub{font-size:.78rem;font-weight:700;color:var(--text-sub,#6b5a42);line-height:1.8;margin-bottom:10px}',
+    '.ma-stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}',
+    '.ma-stat{font-size:.75rem;font-weight:800;padding:4px 12px;border-radius:999px;background:var(--gold-soft,#faf3df);border:1px solid var(--card-border,#e3d5b3);color:var(--text-sub,#6b5a42)}',
+    '.ma-stat.first{border-color:#3b82f6;color:#1d4ed8;background:rgba(59,130,246,.08)}',
+    '.ma-stat.second{border-color:#a855f7;color:#7c3aed;background:rgba(168,85,247,.08)}',
+    '.ma-stat.none{border-color:#f59e0b;color:#b45309;background:rgba(245,158,11,.1)}',
+    '.ma-stat.none.ok{border-color:#16a34a;color:#16a34a;background:rgba(34,197,94,.1)}',
+    '.ma-toolbar{display:flex;gap:8px;margin-bottom:10px}',
+    '.ma-toolbar input{flex:1;min-width:0;padding:9px 12px;border-radius:10px;border:1.5px solid var(--field-border,#e3d5b3);background:var(--field-bg,#fffdf9);color:var(--text-main);font-family:var(--app-font);font-size:.85rem}',
+    '.ma-toolbar select,.ma-bulk select{padding:8px 10px;border-radius:10px;border:1.5px solid var(--field-border,#e3d5b3);background:var(--field-bg,#fffdf9);color:var(--text-main);font-family:var(--app-font);font-size:.8rem;font-weight:700;max-width:46%}',
+    '.ma-bulk{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:9px 10px;border-radius:12px;background:var(--gold-soft,#faf3df);border:1px dashed var(--gold,#c3922b)}',
+    '.ma-bulk-label{font-size:.75rem;font-weight:900;color:var(--text-sub,#6b5a42)}',
+    '.ma-bulk-btn{border:none;border-radius:10px;padding:8px 12px;font-weight:800;font-size:.74rem;cursor:pointer;font-family:var(--app-font)}',
+    '.ma-bulk-btn.first{background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff}',
+    '.ma-bulk-btn.second{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff}',
+    '.ma-list{overflow:auto;max-height:46vh;display:flex;flex-direction:column;gap:8px;padding:2px}',
+    '.ma-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;border-radius:12px;border:1px solid var(--card-border,#e3d5b3);background:var(--bg-card,#fffdf9)}',
+    '.ma-row.ma-unassigned{border-style:dashed;border-color:#f59e0b}',
+    '.ma-info{min-width:0}',
+    '.ma-name{display:block;font-weight:800;font-size:.85rem;color:var(--text-main,#2c1b10);word-break:break-word}',
+    '.ma-level{display:block;font-size:.7rem;color:var(--text-sub,#6b5a42);font-weight:700;margin-top:2px}',
+    '.ma-actions{display:flex;gap:5px;flex-shrink:0;align-items:center}',
+    '.ma-btn{border:1.5px solid var(--card-border,#e3d5b3);background:transparent;border-radius:9px;padding:6px 10px;font-size:.72rem;font-weight:800;cursor:pointer;font-family:var(--app-font);color:var(--text-sub,#6b5a42);white-space:nowrap}',
+    '.ma-btn.first.active{background:linear-gradient(135deg,#1d4ed8,#3b82f6);border-color:#1d4ed8;color:#fff}',
+    '.ma-btn.second.active{background:linear-gradient(135deg,#7c3aed,#a855f7);border-color:#7c3aed;color:#fff}',
+    '.ma-btn.clear.active{background:#eeece4;color:#8a8a8a;border-color:#c9c2ad}',
+    'html.dark .mass-q-btn,html.dark .ma-row{background:var(--bg-card,#1f1b14)}',
+    'html.dark .ma-btn{background:transparent;color:var(--text-sub)}'
+  ].join('\n');
+
+  function injectCss() {
+    if (document.getElementById('hayaty-mass-css')) return;
+    var st = document.createElement('style');
+    st.id = 'hayaty-mass-css';
+    st.textContent = ADDON_CSS;
+    document.head.appendChild(st);
+  }
+
+  /* ─────────────── 3) حقن عناصر الواجهة ─────────────── */
+  function injectStructure() {
+    /* rename الزرار: «حضور القداس الإلهي» → «القداس» */
+    var sub = document.getElementById('hayaty-subnav-mass');
+    if (sub) sub.innerHTML = '✝️ القداس';
+
+    var secTitle = document.querySelector('#tab-mass-attendance > .section-title');
+    if (secTitle) secTitle.textContent = '✝️ القداس الإلهي — الأولاني والتاني';
+
+    var h3 = document.querySelector('#massatt-subtab-record .panel-head h3');
+    if (h3) h3.textContent = 'اختر تاريخ القداس';
+
+    /* اختيار القداس فوق اختيار المستوى في شاشة تسجيل اليوم */
+    var controls = document.querySelector('#massatt-subtab-record .att-controls-row');
+    if (controls && !document.getElementById('massatt-mass-levels')) {
+      controls.insertAdjacentHTML('afterend',
+        '<div class="att-levels-title">اختار القداس <span style="font-weight:600;opacity:.75">(التوزيع الثابت للمخدومين على قداس الجمعة)</span></div>' +
+        '<div class="curriculum-levels" id="massatt-mass-levels"></div>' +
+        '<div class="mass-manage-row">' +
+        '<button type="button" class="att-today-btn" onclick="openMassAssignModal()">⚙️ توزيع المخدومين على القداسين</button>' +
+        '<span class="mass-manage-hint" id="massatt-unassigned-hint"></span>' +
+        '</div>');
+    }
+
+    /* زرار كشف اللجنة في صف تصدير PDF بتاع تسجيل اليوم */
+    var pdfRow = document.querySelector('#massatt-subtab-record .att-pdf-actions');
+    if (pdfRow && !document.getElementById('massatt-committee-btn')) {
+      pdfRow.insertAdjacentHTML('beforeend',
+        '<button type="button" class="att-pdf-btn both" id="massatt-committee-btn" onclick="downloadReadingsCommitteePdf()" title="كشف لجنة القراءات: القداسين مع بعض — المواظبة والقراءات وجودة القراءة لكل مخدوم">🧾 كشف لجنة القراءات (القداسين)</button>');
+    }
+
+    /* اختيار القداس في تقرير الحضور */
+    var repTitle = document.querySelector('#massatt-subtab-report .att-levels-title');
+    if (repTitle && !document.getElementById('massatt-report-mass-levels')) {
+      repTitle.insertAdjacentHTML('beforebegin',
+        '<div class="att-levels-title">اختار القداس</div>' +
+        '<div class="curriculum-levels" id="massatt-report-mass-levels"></div>');
+    }
+
+    /* زرار ترتيب الجودة + زرار كشف اللجنة في التقرير */
+    var sortActions = document.querySelector('#massatt-subtab-report .att-report-sort-row .att-bulk-actions');
+    if (sortActions && !document.getElementById('massatt-sort-quality')) {
+      sortActions.insertAdjacentHTML('beforeend',
+        '<button type="button" class="att-bulk-btn" id="massatt-sort-quality" onclick="massAttReportSort(\'quality\')">🎼 الأعلى جودة قراءة</button>');
+    }
+    var sortRow = document.querySelector('#massatt-subtab-report .att-report-sort-row');
+    if (sortRow && !document.getElementById('massatt-report-committee-btn')) {
+      sortRow.insertAdjacentHTML('beforeend',
+        '<button type="button" class="att-pdf-btn both" id="massatt-report-committee-btn" style="margin-right:auto" onclick="downloadReadingsCommitteePdf()">🧾 كشف لجنة القراءات</button>');
+    }
+
+    /* مودال التوزيع */
+    if (!document.getElementById('mass-assign-overlay')) {
+      var lvlOpts = CURRICULUM_LEVELS.map(function (l) { return '<option value="' + escapeHtml(l) + '">' + escapeHtml(l) + '</option>'; }).join('');
+      document.body.insertAdjacentHTML('beforeend',
+        '<div class="gh-modal-overlay" id="mass-assign-overlay" style="display:none" onclick="if(event.target===this)closeMassAssignModal()">' +
+        '<div class="gh-modal-box ma-box">' +
+        '<div class="gh-modal-head"><div class="gh-modal-title">⚙️ توزيع المخدومين على القداسين</div>' +
+        '<button type="button" class="gh-modal-close" onclick="closeMassAssignModal()">✕</button></div>' +
+        '<div class="ma-sub">كل مخدوم له قداس ثابت: <b>1️⃣ القداس الأولاني</b> أو <b>2️⃣ القداس التاني</b>. ولو حد من بتوع قداس حضر التاني مكانه، سجّله <b>حاضر عادي</b> من شاشة قداسه — المهم إنه حضر.</div>' +
+        '<div class="ma-stats" id="ma-stats"></div>' +
+        '<div class="ma-toolbar">' +
+        '<input type="text" id="ma-search" placeholder="🔍 دور بالاسم..." oninput="renderMassAssignList()">' +
+        '<select id="ma-level-filter" onchange="renderMassAssignList()"><option value="">📶 كل المستويات</option>' + lvlOpts + '</select>' +
+        '</div>' +
+        '<div class="ma-bulk">' +
+        '<span class="ma-bulk-label">نقل جماعي:</span>' +
+        '<select id="ma-bulk-level"><option value="">اختار مستوى…</option>' + lvlOpts + '</select>' +
+        '<button type="button" class="ma-bulk-btn first" onclick="bulkAssignMassByLevel(\'first\')">1️⃣ كلهم للأولاني</button>' +
+        '<button type="button" class="ma-bulk-btn second" onclick="bulkAssignMassByLevel(\'second\')">2️⃣ كلهم للتاني</button>' +
+        '</div>' +
+        '<div class="ma-list" id="ma-list"></div>' +
+        '</div></div>');
+    }
+  }
+
+  /* ─────────────── 4) شرائح اختيار القداس ─────────────── */
+  function massCounts() {
+    var c = { first: 0, second: 0, none: 0, total: 0 };
+    allRecords.forEach(function (r) {
+      if (!recordHasProgram(r, 'hayaty')) return;
+      c.total++;
+      var g = recordMassGroupOf(r);
+      if (g) c[g]++; else c.none++;
+    });
+    return c;
+  }
+
+  function renderMassAttMassSelect() {
+    var wrap = document.getElementById('massatt-mass-levels');
+    if (!wrap) return;
+    var c = massCounts();
+    function chip(v, icon, label, count) {
+      return '<button type="button" class="curriculum-level-btn' + (massAttMassFilter === v ? ' active' : '') + '" onclick="selectMassAttMass(\'' + v + '\')">' +
+        '<span class="lvl-icon">' + icon + '</span><span class="lvl-label">' + label + ' (' + toArabicDigits(count) + ')</span></button>';
+    }
+    wrap.innerHTML =
+      chip('all', '👥', 'القداسين معًا (الكل)', c.total) +
+      chip('first', '1️⃣', 'القداس الأولاني', c.first) +
+      chip('second', '2️⃣', 'القداس التاني', c.second);
+    var hint = document.getElementById('massatt-unassigned-hint');
+    if (hint) hint.innerHTML = c.none > 0
+      ? ('⚠️ <b>' + toArabicDigits(c.none) + '</b> مخدوم لسه ما اتوزعش على قداس — دوس ⚙️ عشان توزعهم')
+      : '';
+  }
+
+  function renderMassAttReportMassChips() {
+    var wrap = document.getElementById('massatt-report-mass-levels');
+    if (!wrap) return;
+    var c = massCounts();
+    function chip(v, icon, label, count) {
+      return '<button type="button" class="curriculum-level-btn' + (massAttReportMass === v ? ' active' : '') + '" onclick="selectMassAttReportMass(\'' + v + '\')">' +
+        '<span class="lvl-icon">' + icon + '</span><span class="lvl-label">' + label + ' (' + toArabicDigits(count) + ')</span></button>';
+    }
+    wrap.innerHTML =
+      chip('all', '👥', 'الكل (حسب المستوى)', c.total) +
+      chip('first', '1️⃣', 'قداس أولاني', c.first) +
+      chip('second', '2️⃣', 'قداس تاني', c.second);
+  }
+
+  window.selectMassAttMass = function (m) {
+    if (m !== 'all' && m !== 'first' && m !== 'second') return;
+    var levelChanged = (m !== 'all') && typeof massAttSelectedLevelIndex === 'number';
+    var levelNull = massAttSelectedLevelIndex === null || massAttSelectedLevelIndex === undefined;
+    massAttMassFilter = m;
+    try { localStorage.setItem(MASS_VIEW_KEY, m); } catch (e) {}
+    if (levelChanged || levelNull) {
+      massAttSelectedLevelIndex = 'all';
+      try { renderMassAttendanceLevels(); } catch (e) {}
+    }
+    renderMassAttMassSelect();
+    if (massAttSubTab !== 'record') {
+      /* لو المستخدم واقف على تقرير الحضور وغيّر القداس من شاشة اليوم — نرجّعه للتسجيل */
+      switchMassAttSubTab('record');
+      return;
+    }
+    loadMassAttendanceForSelection();
+  };
+
+  window.selectMassAttReportMass = function (m) {
+    if (m !== 'all' && m !== 'first' && m !== 'second') return;
+    if (m !== 'all' && typeof massAttReportLevelIndex === 'number') massAttReportLevelIndex = 'all';
+    massAttReportMass = m;
+    renderMassAttReportMassChips();
+    renderMassAttReportLevels();
+    loadMassAttendanceReport();
+  };
+
+  /* ─────────────── 5) تحميل بيانات القراءات (مشتركة) ─────────────── */
+  var __readingsPromise = null;
+  function ensureReadingsAllData() {
+    if (readingsAllData) return Promise.resolve(readingsAllData);
+    if (!__readingsPromise) {
+      __readingsPromise = Promise.resolve()
+        .then(function () {
+          if (typeof loadReadingsAllDataIfNeeded === 'function') return loadReadingsAllDataIfNeeded();
+          return null;
+        })
+        .catch(function () {})
+        .then(function () {
+          if (!readingsAllData) {
+            return waitForFirebase().then(function () {
+              return window._dbGet(window._dbRef(window._db, READINGS_PATH));
+            }).then(function (snap) {
+              readingsAllData = (snap && snap.val()) || {};
+            });
+          }
+        })
+        .catch(function () { if (!readingsAllData) readingsAllData = {}; });
+    }
+    return __readingsPromise;
+  }
+
+  /* خريطة: الاسم → كل قراءاته (النوع + التقييم + التاريخ) مرتبة من الأحدث */
+  function buildReadingsByNameMap() {
+    var map = {};
+    if (!readingsAllData) return map;
+    Object.values(readingsAllData || {}).forEach(function (day) {
+      if (!day) return;
+      var d = day.date || '';
+      Object.entries(day.records || {}).forEach(function (pair) {
+        var list = pair[1];
+        if (!list || !list.length) return;
+        var arr = map[pair[0]] = map[pair[0]] || [];
+        list.forEach(function (e) {
+          arr.push({ type: readingEntryType(e), rating: readingEntryRating(e), date: d });
+        });
+      });
+    });
+    Object.keys(map).forEach(function (n) {
+      map[n].sort(function (a, b) { return (b.date || '').localeCompare(a.date || ''); });
+    });
+    return map;
+  }
+
+  /* جودة القراءة الإجمالية للاسم: { pct: نسبة من ١٠٠ أو null, count, ratedCount } */
+  function readingsQualityFor(name, map) {
+    var entries = (map && map[name]) || [];
+    var rated = entries.filter(function (e) { return e.rating > 0; });
+    if (!rated.length) return { pct: null, count: entries.length, ratedCount: 0 };
+    var avg = rated.reduce(function (s, e) { return s + e.rating; }, 0) / rated.length;
+    return { pct: Math.round(avg * 20), count: entries.length, ratedCount: rated.length };
+  }
+
+  /* ─────────────── 6) شريط القراءات جنب كل اسم في شاشة القداس ─────────────── */
+  function starsMiniHtml(r) {
+    var s = '';
+    for (var i = 1; i <= 5; i++) s += '<span class="mr-star' + (i <= r ? ' on' : '') + '">★</span>';
+    return s;
+  }
+
+  function massReadingsStripHtml(name, map) {
+    if (!readingsAllData) {
+      return '<div class="mass-readings-strip"><span class="mr-loading">📖 قراءاته…</span></div>';
+    }
+    var entries = (map && map[name]) || [];
+    if (!entries.length) {
+      return '<div class="mass-readings-strip"><span class="mr-none">📖 لسه ما قريش أي قراءة في القداس</span></div>';
+    }
+    var q = readingsQualityFor(name, map);
+    var pctHtml = q.pct === null
+      ? '<span class="mr-pct none">🎼 لسه مفيش تقييم للقراءة</span>'
+      : '<span class="mr-pct ' + (q.pct >= 80 ? 'good' : q.pct >= 50 ? 'mid' : 'weak') + '">🎼 جودة القراءة: ' + toArabicDigits(q.pct) + '٪</span>';
+    var last = entries[0];
+    var entriesHtml = entries.map(function (e) {
+      return '<div class="mr-entry"><span class="mr-type">' + escapeHtml(e.type || '') + '</span>' +
+        '<span class="mr-date">' + escapeHtml(isoToArabicDisplay(e.date)) + '</span>' +
+        '<span>' + (e.rating > 0
+          ? starsMiniHtml(e.rating) + ' <b class="mr-entry-pct">' + toArabicDigits(e.rating * 20) + '٪</b>'
+          : '<span class="mr-entry-norate">بدون تقييم</span>') + '</span></div>';
+    }).join('');
+    return '<div class="mass-readings-strip">' + pctHtml +
+      '<span class="mr-count">📖 ' + toArabicDigits(entries.length) + ' قراءة</span>' +
+      '<span class="mr-last">آخرها: ' + escapeHtml(last.type || '') + ' — ' + escapeHtml(isoToArabicDisplay(last.date)) + '</span>' +
+      '<button type="button" class="mr-toggle" onclick="this.closest(\'.mass-readings-strip\').classList.toggle(\'open\')">تفاصيل القراءات</button>' +
+      '<div class="mr-entries">' + entriesHtml + '</div>' +
+      '</div>';
+  }
+
+  /* أزرار التوزيع السريع (١/٢) اللي بتظهر في عرض «القداسين معًا» */
+  function massQuickHtml(row) {
+    var g = row.massGroup;
+    return '<span class="mass-quick" title="التوزيع الثابت على القداسات — دوس ١ أو ٢ عشان تغيّره">' +
+      '<button type="button" class="mass-q-btn first' + (g === 'first' ? ' active' : '') + '" onclick="quickSetMassGroupByName(\'' + escapeJsString(row.name) + '\',\'first\')" title="ضيفه للقداس الأولاني">١</button>' +
+      '<button type="button" class="mass-q-btn second' + (g === 'second' ? ' active' : '') + '" onclick="quickSetMassGroupByName(\'' + escapeJsString(row.name) + '\',\'second\')" title="ضيفه للقداس التاني">٢</button>' +
+      '</span>';
+  }
+
+  /* ─────────────── 7) حفظ التوزيع في قاعدة البيانات ─────────────── */
+  function refreshMassViewsAfterAssign() {
+    renderMassAttMassSelect();
+    renderMassAttReportMassChips();
+    try {
+      if (document.getElementById('tab-hayaty').style.display !== 'none' &&
+          document.getElementById('hayaty-subtab-mass').style.display !== 'none') {
+        renderMassAttendanceList();
+      }
+    } catch (e) {}
+    if (document.getElementById('mass-assign-overlay') &&
+        document.getElementById('mass-assign-overlay').style.display !== 'none') {
+      renderMassAssignList();
+    }
+    try {
+      if (document.getElementById('tab-hayaty').style.display !== 'none' &&
+          document.getElementById('hayaty-subtab-mass').style.display !== 'none' &&
+          document.getElementById('massatt-subtab-report').style.display !== 'none') {
+        renderMassAttReportList();
+      }
+    } catch (e) {}
+  }
+
+  async function setRecordMassGroup(id, group) {
+    var r = allRecords.find(function (x) { return x.id === id; });
+    if (!r) return;
+    var next = (group === 'first' || group === 'second') ? group : '';
+    if (recordMassGroupOf(r) === next) return;
+    try {
+      await waitForFirebase();
+      var ref = window._dbRef(window._db, SHAMAMSA_PATH + '/' + id + '/massGroup');
+      if (next) await window._dbSet(ref, next);
+      else await window._dbRemove(ref);
+    } catch (e) {
+      console.error('فشل حفظ توزيع القداس:', e);
+      showToast('حصل خطأ أثناء حفظ التوزيع، حاول تاني.', 'error');
+      return;
+    }
+    if (next) r.massGroup = next;
+    else { try { delete r.massGroup; } catch (_) { r.massGroup = ''; } }
+    logActivity(next
+      ? ('توزيع قداس: ' + (r.name || '') + ' → ' + MASS_GROUP_LABELS[next])
+      : ('إلغاء توزيع قداس: ' + (r.name || '')), '');
+    showToast(next
+      ? ((r.name || 'المخدوم') + ' بقى من بتوع ' + MASS_GROUP_LABELS[next] + ' ✓')
+      : ((r.name || 'المخدوم') + ' اتشال من توزيع القداسات ✓'), 'success');
+    refreshMassViewsAfterAssign();
+  }
+
+  window.quickSetMassGroupByName = function (name, group) {
+    var r = allRecords.find(function (x) { return (x.name || '') === name; });
+    if (!r) return;
+    setRecordMassGroup(r.id, group);
+  };
+
+  window.setRecordMassGroup = setRecordMassGroup;
+
+  /* ─────────────── 8) مودال التوزيع ─────────────── */
+  window.openMassAssignModal = function () {
+    injectStructure();
+    var s = document.getElementById('ma-search'); if (s) s.value = '';
+    var lf = document.getElementById('ma-level-filter'); if (lf) lf.value = '';
+    var bl = document.getElementById('ma-bulk-level'); if (bl) bl.value = '';
+    renderMassAssignList();
+    document.getElementById('mass-assign-overlay').style.display = 'flex';
+  };
+
+  window.closeMassAssignModal = function () {
+    var ov = document.getElementById('mass-assign-overlay');
+    if (ov) ov.style.display = 'none';
+  };
+
+  window.renderMassAssignList = function () {
+    var listEl = document.getElementById('ma-list');
+    if (!listEl) return;
+    var search = ((document.getElementById('ma-search') || {}).value || '').trim();
+    var lvl = ((document.getElementById('ma-level-filter') || {}).value) || '';
+    var recs = allRecords.filter(function (r) { return recordHasProgram(r, 'hayaty'); })
+      .map(function (r) { return { id: r.id, name: r.name || '', level: r.level || '', massGroup: recordMassGroupOf(r) }; })
+      .filter(function (r) { return r.name; });
+    if (lvl) recs = recs.filter(function (r) { return r.level === lvl; });
+    if (search) recs = sortByArabicSearch(recs, search, function (r) { return r.name; });
+    recs.sort(function (a, b) {
+      return (a.massGroup || 'zz').localeCompare(b.massGroup || 'zz') || a.name.localeCompare(b.name, 'ar');
+    });
+
+    var c = massCounts();
+    var statsEl = document.getElementById('ma-stats');
+    if (statsEl) {
+      statsEl.innerHTML =
+        '<span class="ma-stat first">1️⃣ القداس الأولاني: <b>' + toArabicDigits(c.first) + '</b></span>' +
+        '<span class="ma-stat second">2️⃣ القداس التاني: <b>' + toArabicDigits(c.second) + '</b></span>' +
+        '<span class="ma-stat none' + (c.none ? '' : ' ok') + '">' + (c.none ? '⚠️ مش متوزع' : '✅ كلهم متوزعين') + ': <b>' + toArabicDigits(c.none) + '</b></span>';
+    }
+
+    if (!recs.length) {
+      listEl.innerHTML = '<div class="gh-empty">مفيش نتائج بالفلتر ده.</div>';
+      return;
+    }
+    listEl.innerHTML = recs.map(function (r) {
+      function b(g, label, icon) {
+        return '<button type="button" class="ma-btn ' + g + (r.massGroup === g ? ' active' : '') + '" onclick="setRecordMassGroup(\'' + escapeJsString(r.id) + '\',\'' + g + '\')">' + icon + ' ' + label + '</button>';
+      }
+      return '<div class="ma-row' + (r.massGroup ? '' : ' ma-unassigned') + '">' +
+        '<div class="ma-info"><span class="ma-name">' + escapeHtml(r.name) + '</span>' +
+        '<span class="ma-level">' + escapeHtml(r.level || 'بدون مستوى') + '</span></div>' +
+        '<div class="ma-actions">' +
+        b('first', 'أولاني', '1️⃣') +
+        b('second', 'تاني', '2️⃣') +
+        '<button type="button" class="ma-btn clear' + (r.massGroup ? '' : ' active') + '" onclick="setRecordMassGroup(\'' + escapeJsString(r.id) + '\',\'\')" title="شيله من توزيع القداسات">✕</button>' +
+        '</div></div>';
+    }).join('');
+  };
+
+  window.bulkAssignMassByLevel = function (group) {
+    if (group !== 'first' && group !== 'second') return;
+    var bl = document.getElementById('ma-bulk-level');
+    if (!bl) return;
+    var lvl = bl.value;
+    if (!lvl) { showAppAlert('اختار المستوى الأول من القايمة اللي جنبه.', 'warning'); return; }
+    var targets = allRecords.filter(function (r) {
+      return recordHasProgram(r, 'hayaty') && (r.level || '') === lvl &&
+        recordMassGroupOf(r) !== group && String(r.name || '').trim();
+    });
+    if (!targets.length) { showAppAlert('مفيش مخدومين محتاجين نقل في المستوى ده.', 'info'); return; }
+    showConfirmModal('هتنقل ' + toArabicDigits(targets.length) + ' مخدوم بتوع "' + lvl + '" كلهم على ' + MASS_GROUP_LABELS[group] + '. متأكد؟', async function () {
+      try {
+        await waitForFirebase();
+        await Promise.all(targets.map(function (r) {
+          r.massGroup = group;
+          return window._dbSet(window._dbRef(window._db, SHAMAMSA_PATH + '/' + r.id + '/massGroup'), group);
+        }));
+        logActivity('نقل جماعي إلى ' + MASS_GROUP_LABELS[group], lvl + ' — ' + targets.length + ' مخدوم');
+        showToast('اتنقل ' + toArabicDigits(targets.length) + ' مخدوم إلى ' + MASS_GROUP_LABELS[group] + ' ✓', 'success');
+        renderMassAssignList();
+        renderMassAttMassSelect();
+        renderMassAttReportMassChips();
+      } catch (e) {
+        console.error('فشل النقل الجماعي:', e);
+        showAppAlert('حصل خطأ أثناء النقل الجماعي، حاول تاني.', 'error');
+      }
+    });
+  };
+
+  /* ─────────────── 9) استبدال شاشة تسجيل اليوم (فلتر القداس + شريط القراءات) ─────────────── */
+  window.renderMassAttendanceList = function () {
+    const listEl = document.getElementById('massatt-list');
+    const levelName = massAttLevelName();
+    const search = (document.getElementById('massatt-search-box').value || '').trim();
+    const massActive = massAttMassFilter !== 'all';
+    let recs = allRecords.filter(r => recordHasProgram(r, 'hayaty'));
+    if (massActive) recs = recs.filter(r => recordMassGroupOf(r) === massAttMassFilter);
+    let names = (massAttSelectedLevelIndex === 'all' ? recs : recs.filter(r => (r.level || '') === levelName))
+      .map(r => ({ name: r.name || '', rank: r.rank || '', photoUrl: r.photoUrl || '', massGroup: recordMassGroupOf(r) }))
+      .filter(x => x.name);
+    if (search) { names = sortByArabicSearch(names, search, x => x.name); }
+    if (!search) names.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+    renderMassAttMassSelect();
+    if (names.length === 0) {
+      listEl.innerHTML = massActive
+        ? '<div class="empty-state">مفيش مخدومين متوزعين على القداس ده لسه — دوس على ⚙️ <b>توزيع المخدومين على القداسين</b> فوق عشان توزعهم، أو اختار «القداسين معًا».</div>'
+        : '<div class="empty-state">مفيش مخدومين مسجّلين في المستوى ده لسه</div>';
+      const countEl0 = document.getElementById('massatt-total-count');
+      if (countEl0) countEl0.textContent = '٠';
+      const bar = document.getElementById('massatt-pagination-bar');
+      if (bar) bar.style.display = 'none';
+      return;
+    }
+    const countEl = document.getElementById('massatt-total-count');
+    if (countEl) countEl.textContent = String(names.length);
+    const readingsByName = buildReadingsByNameMap();
+    const pageNames = attPaginateAndRenderBar('massatt', names);
+    listEl.innerHTML = pageNames.map(({ name, rank, photoUrl, massGroup }) => {
+      const status = massAttCurrentData[name] || '';
+      const beh = massAttBehaviorData[name] || '';
+      const avatarHtml = attAvatarHtml(name, photoUrl);
+      return `
+            <div class="att-row${status === 'present' ? ' is-present' : status === 'absent' ? ' is-absent' : ''}">
+                <div class="att-row-top">
+                    <div class="att-avatar">${avatarHtml}</div>
+                    <div class="att-name-wrap">
+                        <span class="att-name">${escapeHtml(name)}</span>
+                        <span class="att-rank">${escapeHtml(rank || '')}</span>
+                    </div>
+                    ${massActive ? '' : massQuickHtml({ name: name, massGroup: massGroup })}
+                </div>
+                <div class="att-row-actions">
+                    <button type="button" class="att-mark-btn present${status === 'present' ? ' active' : ''}" onclick="toggleMassAttStatus('${escapeJsString(name)}', 'present')">✅ حاضر</button>
+                    <button type="button" class="att-mark-btn absent${status === 'absent' ? ' active' : ''}" onclick="toggleMassAttStatus('${escapeJsString(name)}', 'absent')">❌ غايب</button>
+                    ${renderCallBtn(name)}
+                </div>
+                <div class="beh-row">
+                    <button type="button" class="beh-btn positive${beh === 'positive' ? ' active' : ''}" onclick="toggleMassAttBehavior('${escapeJsString(name)}', 'positive')">👍 إيجابي</button>
+                    <button type="button" class="beh-btn negative${beh === 'negative' ? ' active' : ''}" onclick="toggleMassAttBehavior('${escapeJsString(name)}', 'negative')">👎 سلبي</button>
+                    ${renderConfessionBtn(name, document.getElementById('massatt-date').dataset.iso || '', 'mass')}
+                </div>
+                ${massReadingsStripHtml(name, readingsByName)}
+            </div>`;
+    }).join('');
+    if (!readingsAllData) {
+      ensureReadingsAllData().then(function () {
+        try {
+          if (document.getElementById('tab-hayaty').style.display !== 'none' &&
+              document.getElementById('hayaty-subtab-mass').style.display !== 'none' &&
+              document.getElementById('massatt-list-wrap').style.display !== 'none') {
+            renderMassAttendanceList();
+          }
+        } catch (e) {}
+      }).catch(function () {});
+    }
+  };
+
+  /* تحضير/تغييب الكل يحترم فلتر القداس */
+  window.massAttMarkAll = function (status) {
+    const levelName = massAttLevelName();
+    const search = (document.getElementById('massatt-search-box').value || '').trim();
+    const massActive = massAttMassFilter !== 'all';
+    let pool = allRecords.filter(r => recordHasProgram(r, 'hayaty'));
+    if (massActive) pool = pool.filter(r => recordMassGroupOf(r) === massAttMassFilter);
+    let names = (massAttSelectedLevelIndex === 'all' ? pool : pool.filter(r => (r.level || '') === levelName))
+      .map(r => r.name || '').filter(Boolean);
+    if (search) { names = sortByArabicSearch(names, search); }
+    if (names.length === 0) return;
+    const statusLabel = status === 'present' ? 'حاضر' : 'غايب';
+    const dateLabel = document.getElementById('massatt-date').value || '';
+    const confirmMsg = 'هيتم تسجيل "' + statusLabel + '" لعدد ' + names.length + ' مخدوم في يوم ' + dateLabel + ' بس (باقي الأيام مش هتتأثر). متأكد؟';
+    showConfirmModal(confirmMsg, () => {
+      names.forEach(function (n) { massAttCurrentData[n] = status; });
+      renderMassAttendanceList();
+      persistMassAttendance();
+      showAttSaveToast();
+    });
+  };
+
+  /* ─────────────── 10) تقرير الحضور: فلتر القداس + كل المستويات + جودة القراءة ─────────────── */
+  window.renderMassAttReportLevels = function () {
+    const wrap = document.getElementById('massatt-report-levels');
+    if (!wrap) return;
+    const allBtn = `
+            <button type="button" class="curriculum-level-btn${massAttReportLevelIndex === 'all' ? ' active' : ''}" onclick="selectMassAttReportLevel('all')">
+                <span class="lvl-icon">👥</span>
+                <span class="lvl-label">كل المستويات</span>
+            </button>`;
+    wrap.innerHTML = allBtn + CURRICULUM_LEVELS.map((lvl, i) => `
+            <button type="button" class="curriculum-level-btn${massAttReportLevelIndex === i ? ' active' : ''}" onclick="selectMassAttReportLevel(${i})">
+                <span class="lvl-icon">${CURRICULUM_LEVEL_ICONS[i]}</span>
+                <span class="lvl-label">${lvl}</span>
+            </button>
+        `).join('');
+    const n = CURRICULUM_LEVELS.length;
+    const pct = typeof massAttReportLevelIndex === 'number' && n > 1 ? massAttReportLevelIndex / (n - 1) * 88 : 0;
+    wrap.style.setProperty('--curr-progress', pct + '%');
+    renderMassAttReportMassChips();
+  };
+
+  window.selectMassAttReportLevel = function (levelIndex) {
+    massAttReportLevelIndex = levelIndex;
+    massAttReportMonthFilter = 'all';
+    renderMassAttReportLevels();
+    loadMassAttendanceReport();
+  };
+
+  window.massAttReportSort = function (mode) {
+    massAttReportSortMode = mode;
+    ['worst', 'behavior', 'az', 'quality'].forEach(function (m) {
+      const btn = document.getElementById('massatt-sort-' + m);
+      if (btn) btn.classList.toggle('active', m === mode);
+    });
+    renderMassAttReportList();
+  };
+
+  window.renderMassAttReportList = function () {
+    const listEl = document.getElementById('massatt-report-list');
+    const levelIdx = massAttReportLevelIndex;
+    const levelName = CURRICULUM_LEVELS[levelIdx] || '';
+    const massActive = massAttReportMass !== 'all';
+    /* كل الأيام: في وضع «كل المستويات» بنجمع من كل النودات وبنمنع تكرار نفس اليوم */
+    const allDaysForLevel = Object.values(massAttAllData || {}).filter(node => node && (levelIdx === 'all' ? (node.records && Object.keys(node.records || {}).length > 0) : node.levelIndex === levelIdx));
+    populateMassAttReportMonths(allDaysForLevel);
+    const isYearFilter = massAttReportMonthFilter.startsWith('year:');
+    const relevantDays = massAttReportMonthFilter === 'all' ? allDaysForLevel : isYearFilter ? allDaysForLevel.filter(node => node.date && node.date.slice(0, 4) === massAttReportMonthFilter.slice(5)) : allDaysForLevel.filter(node => node.date && node.date.slice(0, 7) === massAttReportMonthFilter);
+    const daysCountEl = document.getElementById('massatt-report-days-count');
+    if (daysCountEl) {
+      daysCountEl.textContent = massAttReportMonthFilter === 'all' ? `(${toArabicDigits(allDaysForLevel.length)} يوم مسجّل إجمالًا)` : isYearFilter ? `(${toArabicDigits(relevantDays.length)} يوم مسجّل في السنة دي)` : `(${toArabicDigits(relevantDays.length)} يوم مسجّل في الشهر ده)`;
+    }
+    let names;
+    if (massActive) {
+      names = allRecords.filter(r => recordHasProgram(r, 'hayaty') && recordMassGroupOf(r) === massAttReportMass && (levelIdx === 'all' || (r.level || '') === levelName)).map(r => r.name || '').filter(Boolean);
+    } else if (levelIdx === 'all') {
+      names = allRecords.filter(r => recordHasProgram(r, 'hayaty')).map(r => r.name || '').filter(Boolean);
+    } else {
+      names = allRecords.filter(r => r.level === levelName).map(r => r.name || '').filter(Boolean);
+    }
+    if (names.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">' + (massActive
+        ? 'مفيش مخدومين متوزعين على القداس ده لسه — وزّعهم من ⚙️ في شاشة تسجيل اليوم'
+        : 'مفيش مخدومين مسجّلين في المستوى ده لسه') + '</div>';
+      return;
+    }
+    if (allDaysForLevel.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">مفيش أي حضور مسجّل ' + (massActive ? 'للقداس ده' : 'للمستوى ده') + ' لسه</div>';
+      return;
+    }
+    if (relevantDays.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">مفيش أي حضور مسجّل لهذه الفترة بالذات</div>';
+      return;
+    }
+    const behScore = { positive: 1, negative: 0 };
+    const readingsMap = buildReadingsByNameMap();
+    const stats = names.map(name => {
+      /* جمع لكل يوم مرة واحدة بس (لو اليوم متسجل في أكتر من نود) */
+      const byDate = {};
+      relevantDays.forEach(day => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(day.date || '')) return;
+        const status = (day.records || {})[name];
+        const beh = (day.behavior || {})[name];
+        const slot = byDate[day.date] = byDate[day.date] || {};
+        /* لو اليوم متسجل في أكتر من مكان: «حاضر» تكسب */
+        if (status === 'present') slot.status = 'present';
+        else if (status === 'absent' && slot.status !== 'present') slot.status = 'absent';
+        if (beh && behScore[beh] !== undefined && !slot.beh) slot.beh = beh;
+      });
+      let present = 0, total = 0;
+      let behSum = 0, behCount = 0;
+      const presentDates = [];
+      Object.keys(byDate).forEach(d => {
+        const s = byDate[d];
+        if (s.status) {
+          total++;
+          if (s.status === 'present') { present++; presentDates.push(d); }
+        }
+        if (s.beh) { behSum += behScore[s.beh]; behCount++; }
+      });
+      presentDates.sort();
+      const pct = total > 0 ? Math.round(present / total * 100) : null;
+      const behAvg = behCount > 0 ? behSum / behCount : null;
+      return {
+        name: name, present: present, total: total, pct: pct,
+        behAvg: behAvg, behLabel: behAvg !== null ? (behAvg >= .5 ? 'positive' : 'negative') : null,
+        behCount: behCount, presentDates: presentDates,
+        quality: readingsQualityFor(name, readingsMap)
+      };
+    });
+    if (massAttReportSortMode === 'worst') {
+      stats.sort((a, b) => (a.pct === null ? 999 : a.pct) - (b.pct === null ? 999 : b.pct));
+    } else if (massAttReportSortMode === 'behavior') {
+      stats.sort((a, b) => (a.behAvg === null ? -1 : a.behAvg) - (b.behAvg === null ? -1 : b.behAvg));
+    } else if (massAttReportSortMode === 'quality') {
+      stats.sort((a, b) => ((b.quality.pct === null ? -1 : b.quality.pct) - (a.quality.pct === null ? -1 : a.quality.pct)) || (b.quality.count - a.quality.count));
+    } else {
+      stats.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+    }
+    listEl.innerHTML = stats.map(s => {
+      const dateChips = s.presentDates.length > 0 ? s.presentDates.map(iso => {
+        const [y, m, d] = iso.split('-').map(Number);
+        return `<span class="att-date-chip">${toArabicDigits(d)} ${ARABIC_MONTHS[m - 1].slice(0, 3)}</span>`;
+      }).join('') : `<span class="att-date-chip att-date-chip-empty">لسه ما حضرش في الفترة دي</span>`;
+      const qHtml = s.quality.pct === null
+        ? `<span class="att-report-beh quality none" style="opacity:.45">🎼 —</span>`
+        : `<span class="att-report-beh quality" title="جودة القراءة من ١٠٠ (متوسط تقييم نجوم قراءاته)">🎼 ${toArabicDigits(s.quality.pct)}٪</span>`;
+      return `
+            <div class="att-report-row-wrap">
+                <div class="att-report-row">
+                    <span class="att-report-name">${escapeHtml(s.name)}</span>
+                    ${qHtml}
+                    <span class="att-report-beh ${s.behLabel || ''}" style="${s.behLabel ? '' : 'opacity:.45;'}">${s.behLabel ? MASS_BEHAVIOR_LABELS[s.behLabel] : 'مفيش تقييم'}</span>
+                    <span class="att-report-pct${s.pct !== null && s.pct < 50 ? ' low' : ''}">${s.pct === null ? '—' : toArabicDigits(s.pct) + '٪'} (${toArabicDigits(s.present)}/${toArabicDigits(s.total)})</span>
+                </div>
+                <div class="att-report-dates-row">
+                    <span class="att-report-dates-label">📅 جه في:</span>
+                    <div class="att-date-chips-wrap">${dateChips}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    if (!readingsAllData) {
+      ensureReadingsAllData().then(function () { renderMassAttReportList(); }).catch(function () {});
+    }
+  };
+
+  /* ─────────────── 11) النسب المئوية في شاشات القراءات ─────────────── */
+  window.renderStarPicker = function (name, type, rating) {
+    const stars = [1, 2, 3, 4, 5].map(n => `
+            <button type="button" class="star-btn${n <= rating ? ' filled' : ''}" onclick="setReadingRating('${escapeJsString(name)}', '${escapeJsString(type)}', ${n})">★</button>
+        `).join('');
+    const pct = readingRatingPct(rating);
+    return `<span class="readings-stars">${stars}<span class="rr-pct${pct === null ? ' none' : ''}">${pct === null ? '—' : toArabicDigits(pct) + '٪'}</span></span>`;
+  };
+
+  window.renderStarsReadonly = function (rating) {
+    const stars = [1, 2, 3, 4, 5].map(n => `<span class="star-btn${n <= rating ? ' filled' : ''}">★</span>`).join('');
+    const pct = readingRatingPct(rating);
+    return `<span class="readings-stars readonly">${stars}${pct === null ? '' : `<span class="rr-pct">${toArabicDigits(pct)}٪</span>`}</span>`;
+  };
+
+  window.renderReadingsLeaderboard = function () {
+    const listEl = document.getElementById('readings-lb-list');
+    const typeFilter = document.getElementById('readings-lb-type-select').value;
+    const relevantDays = Object.values(readingsAllData || {}).filter(day => day && day.levelIndex === readingsLbLevelIndex);
+    const stats = {};
+    relevantDays.forEach(day => {
+      Object.entries(day.records || {}).forEach(([name, list]) => {
+        (list || []).forEach(entry => {
+          const type = readingEntryType(entry);
+          const rating = readingEntryRating(entry);
+          if (typeFilter !== '__all__' && type !== typeFilter) return;
+          if (!rating) return;
+          if (!stats[name]) stats[name] = { sum: 0, count: 0 };
+          stats[name].sum += rating;
+          stats[name].count += 1;
+        });
+      });
+    });
+    const ranked = Object.keys(stats).map(name => ({ name: name, avg: stats[name].sum / stats[name].count, count: stats[name].count })).sort((a, b) => b.avg - a.avg || b.count - a.count);
+    if (ranked.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">لسه محدش اتقيّم في القراءات دي</div>';
+      const bar = document.getElementById('readings-lb-pagination-bar');
+      if (bar) bar.style.display = 'none';
+      return;
+    }
+    const pageRanked = attPaginateAndRenderBar('readings-lb', ranked);
+    listEl.innerHTML = pageRanked.map((r, i) => {
+      const overallRank = ranked.indexOf(r) + 1;
+      return `
+            <div class="readings-lb-row">
+                <span class="readings-lb-rank">#${toArabicDigits(overallRank)}</span>
+                <span class="readings-lb-name">${escapeHtml(r.name)}</span>
+                ${renderStarsReadonly(Math.round(r.avg))}
+                <span class="readings-lb-avg">${r.avg.toFixed(1)} ⭐ (${toArabicDigits(Math.round(r.avg * 20))}٪)</span>
+                <span class="readings-lb-count">(${toArabicDigits(r.count)} قراءة مقيّمة)</span>
+            </div>`;
+    }).join('');
+  };
+
+  /* ─────────────── 12) كشف لجنة القراءات (PDF) ─────────────── */
+  function massGroupPdfLabel(g) {
+    return g === 'first' ? '١ · أولاني' : g === 'second' ? '٢ · تاني' : '—';
+  }
+
+  /* بيانات الكشف — دالة منفصلة عشان ت تتاختبار وتتستخدم في أي مكان */
+  window.buildCommitteeSection = function (group) {
+    const dateIso = (document.getElementById('massatt-date') || {}).dataset ? (document.getElementById('massatt-date').dataset.iso || '') : '';
+    const recs = allRecords
+      .filter(r => recordHasProgram(r, 'hayaty') && recordMassGroupOf(r) === group)
+      .map(r => ({ name: r.name || '', level: r.level || '' }))
+      .filter(r => r.name);
+    const readingsMap = buildReadingsByNameMap();
+    const rows = recs.map(r => {
+      let today = '';
+      Object.values(massAttAllData || {}).forEach(node => {
+        if (!node || node.date !== dateIso) return;
+        const st = (node.records || {})[r.name];
+        if (st === 'present') today = 'present';
+        else if (st === 'absent' && today !== 'present') today = 'absent';
+      });
+      const presentDates = {}, recordedDates = {};
+      let lastPresent = '';
+      Object.values(massAttAllData || {}).forEach(node => {
+        if (!node || !/^\d{4}-\d{2}-\d{2}$/.test(node.date || '')) return;
+        const st = (node.records || {})[r.name];
+        if (st !== 'present' && st !== 'absent') return;
+        recordedDates[node.date] = 1;
+        if (st === 'present') { presentDates[node.date] = 1; if (node.date > lastPresent) lastPresent = node.date; }
+      });
+      const pCount = Object.keys(presentDates).length;
+      const rCount = Object.keys(recordedDates).length;
+      return {
+        name: r.name, level: r.level, today: today,
+        present: pCount, recorded: rCount,
+        attPct: rCount > 0 ? Math.round(pCount / rCount * 100) : null,
+        lastPresent: lastPresent,
+        quality: readingsQualityFor(r.name, readingsMap)
+      };
+    });
+    rows.sort((a, b) => {
+      const ap = a.attPct === null ? -1 : a.attPct, bp = b.attPct === null ? -1 : b.attPct;
+      if (bp !== ap) return bp - ap;
+      const aq = a.quality.pct === null ? -1 : a.quality.pct, bq = b.quality.pct === null ? -1 : b.quality.pct;
+      if (bq !== aq) return bq - aq;
+      return a.name.localeCompare(b.name, 'ar');
+    });
+    return { group: group, rows: rows };
+  };
+
+  async function downloadReadingsCommitteePdf() {
+    const oldFrame = document.getElementById('pdf-print-frame-committee');
+    if (oldFrame) oldFrame.remove();
+    const printFrame = document.createElement('iframe');
+    printFrame.id = 'pdf-print-frame-committee';
+    printFrame.style.cssText = 'position:fixed; right:-9999px; bottom:-9999px; width:0; height:0; border:0;';
+    document.body.appendChild(printFrame);
+    try {
+      await waitForFirebase();
+      if (!massAttAllData) {
+        try {
+          const snap = await window._dbGet(window._dbRef(window._db, MASS_ATTENDANCE_PATH));
+          massAttAllData = snap.val() || {};
+        } catch (e) { massAttAllData = {}; }
+      }
+      await ensureReadingsAllData();
+      const dateLabel = document.getElementById('massatt-date').value || '—';
+      const sections = [buildCommitteeSection('first'), buildCommitteeSection('second')];
+      const unassigned = buildCommitteeSection('');
+
+      function summaryChips(sec) {
+        const total = sec.rows.length;
+        const presentToday = sec.rows.filter(r => r.today === 'present').length;
+        const pct = total > 0 ? Math.round(presentToday / total * 100) : 0;
+        return { total: total, presentToday: presentToday, pct: pct };
+      }
+      const s1 = summaryChips(sections[0]);
+      const s2 = summaryChips(sections[1]);
+
+      const buildTable = (rows, groupTag) => `
+                <table><thead><tr><th style="width:34px;">#</th><th>الاسم</th><th style="width:92px;">المستوى</th><th style="width:86px;">حضور اليوم</th><th style="width:110px;">المواظبة</th><th style="width:92px;">آخر حضور</th><th>القراءات</th><th style="width:74px;">الجودة</th></tr></thead>
+                <tbody>${rows.length ? rows.map((r, i) => `
+                    <tr>
+                        <td>${toArabicDigits(i + 1)}</td>
+                        <td style="text-align:right;">${escapeHtml(r.name)}</td>
+                        <td>${escapeHtml(r.level || '—')}</td>
+                        <td class="${r.today === 'present' ? 'st-present' : r.today === 'absent' ? 'st-absent' : 'st-pending'}">${r.today === 'present' ? '✅ حاضر' : r.today === 'absent' ? '❌ غايب' : '—'}</td>
+                        <td class="${r.attPct === null ? 'st-pending' : r.attPct >= 50 ? 'st-present' : 'st-absent'}">${r.attPct === null ? '—' : toArabicDigits(r.attPct) + '٪'} (${toArabicDigits(r.present)}/${toArabicDigits(r.recorded)})</td>
+                        <td>${r.lastPresent ? escapeHtml(isoToArabicDisplay(r.lastPresent)) : '—'}</td>
+                        <td style="text-align:right; font-size:.72rem;">${r.quality.count ? escapeHtml(toArabicDigits(r.quality.count) + ' قراءة' + (r.quality.ratedCount ? '' : ' (بدون تقييم)')) : 'لم يقرأ'}</td>
+                        <td class="${r.quality.pct === null ? 'st-pending' : r.quality.pct >= 80 ? 'st-present' : r.quality.pct >= 50 ? 'st-pending' : 'st-absent'}">${r.quality.pct === null ? '—' : toArabicDigits(r.quality.pct) + '٪'}</td>
+                    </tr>`).join('') : `<tr><td colspan="8">مفيش مخدومين متوزعين على القداس ده لسه — وزّعهم الأول من شاشة ✝️ القداس</td></tr>`}</tbody></table>`;
+
+      const sectionHtml = (icon, title, sec) => `
+                    <div class="section-block">
+                        <div class="section-title">${icon} ${title} — عددهم: ${toArabicDigits(sec.rows.length)}</div>
+                        ${buildTable(sec.rows)}
+                    </div>`;
+
+      const now = new Date;
+      const exportDateStr = toArabicDigits(now.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
+      const html = `
+                <!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+                <title>كشف لجنة القراءات - كنيسة الملاك ميخائيل</title>
+                <style>
+                    * { box-sizing:border-box; }
+                    body { font-family: 'Tajawal', Arial, sans-serif; padding: 30px 34px; color:#2c1b10; }
+                    .doc-header { text-align:center; margin-bottom: 22px; }
+                    .doc-header h1 { font-size:1.4rem; color:#8a6a1f; margin:2px 0; }
+                    .doc-header .parish { font-size:.95rem; color:#4b3a20; margin-bottom:4px; }
+                    .doc-header .diocese { font-size:.82rem; color:#6b5a42; }
+                    hr.gold-rule { border:none; border-top:2px solid #d4af37; margin:16px 0 22px; }
+                    .section-block { margin-bottom: 34px; page-break-inside:avoid; }
+                    .section-title { text-align:center; font-size:1.15rem; font-weight:700; margin-bottom:4px; }
+                    .section-meta { text-align:center; font-size:.8rem; color:#6b5a42; margin-bottom:14px; }
+                    table { width:100%; border-collapse:collapse; font-size:.78rem; margin-top:10px; }
+                    th, td { border:1px solid #d8cfa8; padding:6px 7px; text-align:center; }
+                    th { background:#f3e6bf; color:#4b3a20; font-weight:700; }
+                    tr:nth-child(even) td { background:#fbf6e8; }
+                    .st-present { color:#16a34a; font-weight:700; }
+                    .st-absent { color:#b91c1c; font-weight:700; }
+                    .st-pending { color:#a3782f; font-weight:700; }
+                    .summary-band { display:flex; justify-content:center; gap:22px; margin: 18px 0 26px; flex-wrap:wrap; font-size:.85rem; font-weight:700; }
+                    .summary-chip { padding:6px 16px; border-radius:20px; border:1px solid #d8cfa8; background:#fbf6e8; }
+                    .verse-footer { text-align:center; margin-top:30px; font-size:1rem; font-weight:700; color:#4b3a20; }
+                    .verse-footer .sub { font-size:.8rem; color:#6b5a42; font-weight:600; margin-top:6px; }
+                    @media print { body { padding:10px 16px; } .section-block { page-break-inside:avoid; } }
+                </style></head><body>
+                <div class="doc-header">
+                    <h1>🧾 كشف لجنة القراءات — قداسات التربية الكنسية</h1>
+                    <div class="parish">كنيسة الملاك ميخائيل — عزبة النخل بالأندلس</div>
+                    <div class="diocese">تابعة لمطرانية شبرا الخيمة</div>
+                </div>
+                <hr class="gold-rule">
+                <div class="section-meta" style="margin-bottom:6px;">📅 يوم القداس: ${escapeHtml(dateLabel)}</div>
+                <div class="section-meta" style="margin-bottom:22px;">🖨️ تاريخ التصدير: ${exportDateStr} — بواسطة: ${escapeHtml(currentServantName())}</div>
+                <div class="summary-band">
+                    <span class="summary-chip">1️⃣ أولاني: ${toArabicDigits(s1.total)} — حضر اليوم: ${toArabicDigits(s1.presentToday)} (${toArabicDigits(s1.pct)}٪)</span>
+                    <span class="summary-chip">2️⃣ تاني: ${toArabicDigits(s2.total)} — حضر اليوم: ${toArabicDigits(s2.presentToday)} (${toArabicDigits(s2.pct)}٪)</span>
+                    <span class="summary-chip">⚠️ لسه ما اتوزعوش: ${toArabicDigits(unassigned.rows.length)}</span>
+                </div>
+                ${sectionHtml('1️⃣', 'القداس الأولاني', sections[0])}
+                ${sectionHtml('2️⃣', 'القداس التاني', sections[1])}
+                ${unassigned.rows.length ? `
+                <div class="section-block">
+                    <div class="section-title">⚠️ لسه ما اتوزعوش على قداس — عددهم: ${toArabicDigits(unassigned.rows.length)}</div>
+                    ${buildTable(unassigned.rows)}
+                </div>` : ''}
+                <div class="verse-footer">
+                    «طُوبَى لِلَّذِينَ يَتْلُونَ كِتَابَ اللهِ وَيُقِيمُونَ الصَّلاةَ»
+                    <div class="sub">🧾 كشف لجنة القراءات — اختاروا الناس المواظبة والجودة عالية يبدأوا يقرأوا</div>
+                </div>
+                </body></html>
+            `;
+      const frameDoc = printFrame.contentWindow.document;
+      frameDoc.open();
+      frameDoc.write(html);
+      frameDoc.close();
+      await new Promise(resolve => setTimeout(resolve, 150));
+      printFrame.contentWindow.focus();
+      printFrame.contentWindow.print();
+      logActivity('تحميل كشف لجنة القراءات (القداسين)', dateLabel);
+    } catch (err) {
+      console.error('فشل إنشاء كشف لجنة القراءات:', err);
+      printFrame.remove();
+      showAppAlert('حصل خطأ أثناء تجهيز كشف اللجنة: ' + (err && err.message ? err.message : 'خطأ غير معروف'), 'error');
+    }
+  }
+  window.downloadReadingsCommitteePdf = downloadReadingsCommitteePdf;
+
+  /* ─────────────── 13) تشغيل شاشة القداس: تشغيل الأصلي + شرائح القداس + القراءات ─────────────── */
+  const __origInitMassAttendanceTab = window.initMassAttendanceTab;
+  window.initMassAttendanceTab = function () {
+    const out = __origInitMassAttendanceTab && __origInitMassAttendanceTab.apply(this, arguments);
+    renderMassAttMassSelect();
+    renderMassAttReportMassChips();
+    const wasNull = !readingsAllData;
+    ensureReadingsAllData().then(function () {
+      if (wasNull) {
+        try {
+          if (document.getElementById('tab-hayaty').style.display !== 'none' &&
+              document.getElementById('hayaty-subtab-mass').style.display !== 'none' &&
+              document.getElementById('massatt-list-wrap').style.display !== 'none') {
+            renderMassAttendanceList();
+          }
+        } catch (e) {}
+      }
+    }).catch(function () {});
+    return out;
+  };
+
+  /* ─────────────── 14) كشوف PDF اليومية تحترم فلتر القداس ─────────────── */
+  window.downloadMassAttendancePdf = async function (mode){
+  /* 🔸 نسخة معدّلة: بتحترم فلتر القداس (الأولاني/التاني) وتضيف عمود القداس في عرض «القداسين معًا» */
+  const __massActive = massAttMassFilter !== "all";const oldFrame=document.getElementById("pdf-print-frame-massatt");if(oldFrame)oldFrame.remove();const printFrame=document.createElement("iframe");printFrame.id="pdf-print-frame-massatt";printFrame.style.cssText="position:fixed; right:-9999px; bottom:-9999px; width:0; height:0; border:0;";document.body.appendChild(printFrame);try{const levelName=massAttLevelName();const dateLabel=document.getElementById("massatt-date").value||"—";const dateIso=document.getElementById("massatt-date").dataset.iso||"";await ensureConfessionMonthLoaded(dateIso);let names=(massAttSelectedLevelIndex==="all"?allRecords.filter(r=>recordHasProgram(r,"hayaty")):allRecords.filter(r=>recordHasProgram(r,"hayaty")&&(r.level||"")===levelName)).map(r=>({name:r.name||"",rank:r.rank||"",massGroup:recordMassGroupOf(r)})).filter(x=>x.name).filter(x=>!__massActive||x.massGroup===massAttMassFilter);names.sort((a,b)=>a.name.localeCompare(b.name,"ar"));const withStatus=names.map((x,i)=>({...x,num:i+1,status:massAttCurrentData[x.name]||"pending",beh:massAttBehaviorData[x.name]||"",confessed:!!confessionStateFor(x.name)}));const present=withStatus.filter(x=>x.status==="present");const absent=withStatus.filter(x=>x.status==="absent");const pending=withStatus.filter(x=>x.status==="pending");const behLabel=b=>b==="positive"?"👍 إيجابي":b==="negative"?"👎 سلبي":"—";const behClass=b=>b==="positive"?"st-present":b==="negative"?"st-absent":"st-pending";const buildTable=(rows,statusColClass)=>`\n                <table><thead><tr><th style="width:40px;">#</th><th>الاسم</th><th style="width:120px;">الرتبة</th>${__massActive?"":'<th style="width:84px;">القداس</th>'}<th style="width:100px;">الحالة</th><th style="width:100px;">السلوك</th><th style="width:90px;">🙏 الاعتراف</th></tr></thead>\n                <tbody>${rows.length?rows.map(r=>`\n                    <tr>\n                        <td>${toArabicDigits(r.num)}</td>\n                        <td style="text-align:right;">${escapeHtml(r.name)}</td>\n                        <td>${escapeHtml(r.rank||"—")}</td>${__massActive?"":"<td>"+massGroupPdfLabel(r.massGroup)+"</td>"}\n                        <td class="${statusColClass}">${r.status==="present"?"✅ حاضر":r.status==="absent"?"❌ غايب":"⏳ لم يحدَّد"}</td>\n                        <td class="${behClass(r.beh)}">${behLabel(r.beh)}</td>\n                        <td class="${r.confessed?"st-present":"st-pending"}">${r.confessed?"🙏 تم":"—"}</td>\n                    </tr>`).join(""):'<tr><td colspan="+(__massActive?6:7)+">لا يوجد بيانات</td></tr>'}</tbody></table>`;let title="";let sectionsHtml="";let filenameNote="";if(mode==="present"){title="كشف الحاضرين — القداس الإلهي";filenameNote="الحاضرين";sectionsHtml=`<div class="section-block"><div class="section-title">✅ الحاضرين — عددهم: ${toArabicDigits(present.length)}</div>${buildTable(present,"st-present")}</div>`}else if(mode==="absent"){title="كشف الغايبين — القداس الإلهي";filenameNote="الغايبين";sectionsHtml=`<div class="section-block"><div class="section-title">❌ الغايبين — عددهم: ${toArabicDigits(absent.length)}</div>${buildTable(absent,"st-absent")}</div>`}else{title="كشف الحضور والغياب الشامل — القداس الإلهي";filenameNote="شامل";sectionsHtml=`\n                    <div class="section-block"><div class="section-title">✅ الحاضرين — عددهم: ${toArabicDigits(present.length)}</div>${buildTable(present,"st-present")}</div>\n                    <div class="section-block"><div class="section-title">❌ الغايبين — عددهم: ${toArabicDigits(absent.length)}</div>${buildTable(absent,"st-absent")}</div>\n                    ${pending.length?`<div class="section-block"><div class="section-title">⏳ لم يتحدّد بعد — عددهم: ${toArabicDigits(pending.length)}</div>${buildTable(pending,"st-pending")}</div>`:""}`}const total=withStatus.length;const pct=total>0?Math.round(present.length/total*100):0;const positiveBehCount=withStatus.filter(x=>x.beh==="positive").length;const negativeBehCount=withStatus.filter(x=>x.beh==="negative").length;const confessedCount=withStatus.filter(x=>x.confessed).length;const now=new Date;const exportDateStr=toArabicDigits(now.toLocaleDateString("ar-EG",{weekday:"long",day:"numeric",month:"long",year:"numeric"}));const html=`\n                <!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">\n                <title>${title} - كنيسة الملاك ميخائيل</title>\n                <style>\n                    * { box-sizing:border-box; }\n                    body { font-family: 'Tajawal', Arial, sans-serif; padding: 30px 34px; color:#2c1b10; }\n                    .doc-header { text-align:center; margin-bottom: 22px; }\n                    .doc-header h1 { font-size:1.4rem; color:#8a6a1f; margin:2px 0; }\n                    .doc-header .parish { font-size:0.95rem; color:#4b3a20; margin-bottom:4px; }\n                    .doc-header .diocese { font-size:0.82rem; color:#6b5a42; }\n                    hr.gold-rule { border:none; border-top:2px solid #d4af37; margin:16px 0 22px; }\n                    .section-block { margin-bottom: 34px; }\n                    .section-title { text-align:center; font-size:1.15rem; font-weight:700; color:var(--brand-dark); margin-bottom:4px; }\n                    .section-meta { text-align:center; font-size:0.8rem; color:#6b5a42; margin-bottom:14px; }\n                    table { width:100%; border-collapse:collapse; font-size:0.8rem; margin-top:10px; }\n                    th, td { border:1px solid #d8cfa8; padding:7px 8px; text-align:center; }\n                    th { background:#f3e6bf; color:#4b3a20; font-weight:700; }\n                    tr:nth-child(even) td { background:#fbf6e8; }\n                    .st-present { color:#16a34a; font-weight:700; }\n                    .st-absent { color:#b91c1c; font-weight:700; }\n                    .st-pending { color:#a3782f; font-weight:700; }\n                    .summary-band { display:flex; justify-content:center; gap:26px; margin: 18px 0 26px; flex-wrap:wrap; font-size:0.85rem; font-weight:700; }\n                    .summary-chip { padding:6px 16px; border-radius:20px; border:1px solid #d8cfa8; background:#fbf6e8; }\n                    .verse-footer { text-align:center; margin-top:30px; font-size:1rem; font-weight:700; color:#4b3a20; }\n                    .verse-footer .sub { font-size:0.8rem; color:#6b5a42; font-weight:600; margin-top:6px; }\n                    @media print { body { padding:10px 16px; } .section-block { page-break-inside:avoid; } }\n                </style><style id="cx-perf-tweaks">
+/* تحسينات أداء وثبات */
+@font-face{font-display:swap}
+@media (max-width:820px){
+  .cx-nav{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+  .cx-scrim{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+  body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+  a,button,.cx-icon,.nav-btn,.soft-btn{min-height:40px}
+}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+</style>
+</head><body>\n                <div class="doc-header">\n                    <h1>حضور وغياب القداس الإلهي</h1>\n                    <div class="parish">كنيسة الملاك ميخائيل — عزبة النخل بالأندلس</div>\n                    <div class="diocese">تابعة لمطرانية شبرا الخيمة</div>\n                </div>\n                <hr class="gold-rule">\n                <div class="section-meta" style="margin-bottom:6px;">📅 تاريخ القداس: ${escapeHtml(dateLabel)} — المستوى: ${escapeHtml(levelName)}${__massActive?" — القداس: "+MASS_GROUP_LABELS[massAttMassFilter]:""}</div>\n                <div class="section-meta" style="margin-bottom:22px;">🖨️ تاريخ التصدير: ${exportDateStr} — بواسطة: ${escapeHtml(currentServantName())}</div>\n                <div class="summary-band">\n                    <span class="summary-chip">👥 الإجمالي: ${toArabicDigits(total)}</span>${__massActive?"":'<span class="summary-chip">1️⃣ أولاني: '+toArabicDigits(withStatus.filter(x=>x.massGroup==="first").length)+'</span><span class="summary-chip">2️⃣ تاني: '+toArabicDigits(withStatus.filter(x=>x.massGroup==="second").length)+'</span>'}\n                    <span class="summary-chip">✅ حاضر: ${toArabicDigits(present.length)}</span>\n                    <span class="summary-chip">❌ غايب: ${toArabicDigits(absent.length)}</span>\n                    <span class="summary-chip">📊 نسبة الحضور: ${toArabicDigits(pct)}٪</span>\n                    <span class="summary-chip">👍 إيجابي: ${toArabicDigits(positiveBehCount)}</span>\n                    <span class="summary-chip">👎 سلبي: ${toArabicDigits(negativeBehCount)}</span>\n                    <span class="summary-chip">🙏 اعترفوا الشهر ده: ${toArabicDigits(confessedCount)}</span>\n                </div>\n                ${sectionsHtml}\n                <div class="verse-footer">\n                    «مَنْ خَدَمَنِي فَلْيَتْبَعْنِي، وَحَيْثُ أَكُونُ أَنَا يَكُونُ خَادِمِي أَيْضًا» (يو ٢٦:١٢)\n                    <div class="sub">✝️ حضور وغياب القداس الإلهي — كنيسة الملاك ميخائيل عزبة النخل بالأندلس</div>\n                </div>\n                </body></html>\n            `;const frameDoc=printFrame.contentWindow.document;frameDoc.open();frameDoc.write(html);frameDoc.close();await new Promise(resolve=>setTimeout(resolve,150));printFrame.contentWindow.focus();printFrame.contentWindow.print();logActivity("تحميل PDF لكشف حضور القداس ("+filenameNote+")",levelName+" — "+dateLabel)}catch(err){console.error("فشل إنشاء ملف PDF لكشف حضور القداس:",err);oldFrame&&oldFrame.remove();printFrame.remove();showAppAlert("حصل خطأ أثناء تجهيز ملف PDF: "+(err&&err.message?err.message:"خطأ غير معروف"),"error")}};
+
+  /* ─────────────── 15) التثبيت ─────────────── */
+  injectCss();
+  injectStructure();
+  /* ربط أزرار الصفحات (pagination) بالنسخة الجديدة من الرسم */
+  try { ATT_PAGER_RENDERERS['massatt'] = renderMassAttendanceList; } catch (e) {}
+  window.__HAYATY_MASS_ADDON__ = true;
+  /* للفحص والتشخيص فقط */
+  window.__HAYATY_MASS_DEBUG__ = function () {
+    return { filter: massAttMassFilter, reportMass: massAttReportMass };
+  };
+  try { console.log('🌿✝️ إضافة القداسين (الأولاني/التاني) اشتغلت — v1.0'); } catch (e) {}
+})();
+
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4cddb731cd73391',t:'MTc5MjM5MjcxNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body> </html>
