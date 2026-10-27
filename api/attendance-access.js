@@ -15,7 +15,7 @@
 const crypto = require('crypto');
 
 const SERVICE = 'attendance-access';
-const VERSION = '2026.10.27-approval-renew-v2';
+const VERSION = '2026.10.27-skills-v5';
 const DEFAULT_DATABASE_URL = 'https://alshamamasahschool-default-rtdb.europe-west1.firebasedatabase.app';
 const DEFAULT_PROJECT_ID = 'alshamamasahschool';
 const OWNER = 'lucaskayser';
@@ -397,6 +397,8 @@ function describe(key, s) {
     canApprove: owner || perms.includes('attendanceApprover') || perms.includes('attendanceCodeReceiver'),
     canRequest: owner || (!father && perms.includes('lateAttendanceRequest') && perms.includes('attendance')),
     canAttend: owner || (!father && perms.includes('attendance')),
+    canDeacons: owner || (!father && perms.includes('deacons')),
+    isSchoolAdmin: !father && s.role === 'admin',
   };
 }
 async function loadMe(ctx, fresh = false) {
@@ -872,6 +874,197 @@ async function saveOperation(ctx, todayMode) {
   return { key, changed: changed.length, accessUntil: grant ? grant.accessUntil : undefined };
 }
 
+/* ملاحظات الخدام: مشفّرة، مرتبطة بمعرّف المخدوم، وصلاحيتها من حساب الخادم. */
+const NOTES_ROOT = 'shamamsa-skill-notes-v1';
+const NOTE_CATEGORIES = Object.freeze({alhan:'الألحان',coptic:'القبطي',rites:'الطقس',readings:'القراءات والمحفوظات',service:'الخدمة',other:'ملاحظات عامة'});
+const NOTE_ID_RE = /^[A-Za-z0-9_-]{16,64}$/;
+
+function notesKeys() {
+  const raw = env('NOTES_ENCRYPTION_KEY');
+  let master = null;
+  if (/^[0-9a-f]{64}$/i.test(raw)) master = Buffer.from(raw, 'hex');
+  else if (/^[A-Za-z0-9+/_-]{43}=?$/.test(raw)) {
+    try { master = Buffer.from(raw.replace(/-/g,'+').replace(/_/g,'/'), 'base64'); } catch (_) {}
+  }
+  if (!master || master.length !== 32) throw new ApiError(503, 'مفتاح حماية الملاحظات غير متجهّز. اتبع خطوة NOTES_ENCRYPTION_KEY في README ثم أعد النشر.');
+  return {
+    enc: crypto.createHmac('sha256', master).update('student-notes-encryption-v1').digest(),
+    index: crypto.createHmac('sha256', master).update('student-notes-index-v1').digest(),
+  };
+}
+function notesReady() { try { notesKeys(); return true; } catch (_) { return false; } }
+function notesGuard(ctx) {
+  if (!ctx.me || !(ctx.me.isOwner || ctx.me.canDeacons)) throw new ApiError(403, 'عرض وإضافة الملاحظات يحتاج صلاحية تسجيل المخدومين.');
+  return notesKeys();
+}
+function studentId(value) {
+  const id=typeof value==='string' ? value.trim() : '';
+  if(!id || id.length>200 || BAD_KEY_RE.test(id)) throw new ApiError(400, 'معرّف المخدوم غير صالح.');
+  return id;
+}
+function noteId(value) {
+  const id=typeof value==='string'?value:'';
+  if(!NOTE_ID_RE.test(id)) throw new ApiError(400, 'معرّف الملاحظة غير صالح.');
+  return id;
+}
+function mutationId(value) {
+  const id=typeof value==='string'?value:'';
+  if(!NOTE_ID_RE.test(id)) throw new ApiError(400, 'معرّف العملية غير صالح.');
+  return id;
+}
+function noteFields(body) {
+  const category=String(body.category||'');
+  if(!has(NOTE_CATEGORIES,category)) throw new ApiError(400, 'اختار نوع الملاحظة.');
+  if(typeof body.text!=='string') throw new ApiError(400, 'اكتب نص الملاحظة.');
+  const text=body.text.replace(/\r\n?/g,'\n').trim();
+  if(!text || text.length>1000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(text)) throw new ApiError(400, 'اكتب ملاحظة من ١ إلى ١٠٠٠ حرف بدون رموز تحكم.');
+  return {category,text};
+}
+const NOTES_META_PATH = 'shamamsa-skill-notes-config/v1';
+function keyFingerprint(keys) { return crypto.createHmac('sha256',keys.index).update('notes-key-verifier-v1').digest('base64url'); }
+async function verifyNotesKey(cfg,keys,initialize) {
+  const expected=keyFingerprint(keys),meta=await dbGet(cfg,NOTES_META_PATH);
+  function check(value) {
+    if(!isObj(value)||value.v!==1||typeof value.keyCheck!=='string'||!safeEqual(value.keyCheck,expected)) throw new ApiError(503,'مفتاح حماية الملاحظات مختلف عن المفتاح المستخدم عند حفظها، أو مؤشر الحماية تالف. أعد المفتاح الأصلي من النسخة الآمنة ولا تحفظ ملاحظات جديدة.');
+  }
+  if(meta!==null && meta!==undefined){check(meta);return;}
+  const existing=await dbGet(cfg,NOTES_ROOT);
+  if(existing!==null && (typeof existing!=='object'||Object.keys(existing).length)) throw new ApiError(503,'مؤشر حماية الملاحظات مفقود مع وجود بيانات سابقة؛ استعد المؤشر والمفتاح من النسخة الاحتياطية قبل المتابعة.');
+  if(!initialize)return;
+  await transact(cfg,NOTES_META_PATH,current=>{
+    if(current!==null && current!==undefined){check(current);return undefined;}
+    return {v:1,keyCheck:expected};
+  });
+}
+function noteBucket(keys,id) { return crypto.createHmac('sha256',keys.index).update('student-id-v1|'+id).digest('base64url'); }
+function notePath(keys,id,nid) { return NOTES_ROOT+'/'+noteBucket(keys,id)+'/'+nid; }
+function encryptNote(keys,bucket,nid,note) {
+  const iv=crypto.randomBytes(12),cipher=crypto.createCipheriv('aes-256-gcm',keys.enc,iv);
+  cipher.setAAD(Buffer.from('student-note-v1|'+bucket+'|'+nid,'utf8'));
+  const ciphertext=Buffer.concat([cipher.update(JSON.stringify(note),'utf8'),cipher.final()]);
+  return {v:1,iv:iv.toString('base64url'),data:ciphertext.toString('base64url'),tag:cipher.getAuthTag().toString('base64url')};
+}
+function decryptNote(keys,bucket,nid,blob) {
+  try {
+    if(!isObj(blob)||blob.v!==1||typeof blob.iv!=='string'||typeof blob.data!=='string'||typeof blob.tag!=='string') throw Error('bad blob');
+    const iv=Buffer.from(blob.iv,'base64url'),data=Buffer.from(blob.data,'base64url'),tag=Buffer.from(blob.tag,'base64url');
+    if(iv.length!==12||tag.length!==16||data.length>12000) throw Error('bad size');
+    const decipher=crypto.createDecipheriv('aes-256-gcm',keys.enc,iv);
+    decipher.setAAD(Buffer.from('student-note-v1|'+bucket+'|'+nid,'utf8'));decipher.setAuthTag(tag);
+    const n=JSON.parse(Buffer.concat([decipher.update(data),decipher.final()]).toString('utf8'));
+    if(!isObj(n)||n.id!==nid||!NOTE_ID_RE.test(n.id)||!n.studentId||noteBucket(keys,n.studentId)!==bucket||!has(NOTE_CATEGORIES,n.category)||typeof n.text!=='string'||typeof n.schoolYear!=='string'||typeof n.authorUsername!=='string'||typeof n.version!=='string') throw Error('bad note');
+    return n;
+  } catch (_) { throw new ApiError(500, 'تعذرت قراءة ملاحظة محفوظة أو التحقق من سلامتها. تأكد من مفتاح الحماية والنسخة الاحتياطية؛ لم يتم عرض نتائج ناقصة.'); }
+}
+function canEditNote(me,n) { return !!me && (me.isOwner || me.isSchoolAdmin || me.uname===String(n.authorUsername||'').toLowerCase()); }
+function publicNote(n,me) {
+  return {id:n.id,studentId:n.studentId,studentName:n.studentName,schoolYear:n.schoolYear,category:n.category,categoryLabel:NOTE_CATEGORIES[n.category],text:n.text,authorUsername:n.authorUsername,authorName:n.authorName,createdAt:n.createdAt,updatedAt:n.updatedAt,updatedBy:n.updatedBy||'',edited:!!n.lastMutation,version:n.version,canEdit:canEditNote(me,n)};
+}
+function historyYears(r) {
+  const entries=[r];
+  if(Array.isArray(r.history)) entries.push(...r.history);
+  else if(isObj(r.history)) entries.push(...Object.values(r.history));
+  return new Set(entries.filter(isObj).map(x=>String(x.year||'').trim()).filter(Boolean));
+}
+function sortNotes(a,b) { return String(b.schoolYear).localeCompare(String(a.schoolYear)) || Number(b.createdAt)-Number(a.createdAt) || a.id.localeCompare(b.id); }
+async function skillNotesList(ctx) {
+  const keys=notesGuard(ctx),sid=studentId(ctx.body.studentId),bucket=noteBucket(keys,sid);
+  await verifyNotesKey(ctx.cfg,keys,false);
+  const raw=await dbGet(ctx.cfg,NOTES_ROOT+'/'+bucket);
+  if(raw!==null&&!isObj(raw)) throw new ApiError(500,'بيانات ملاحظات المخدوم غير صالحة؛ لم يتم عرض نتائج ناقصة.');
+  const list=[];
+  for(const [id,blob] of Object.entries(raw||{})) { if(!NOTE_ID_RE.test(id)) throw new ApiError(500,'بيانات ملاحظات المخدوم غير صالحة.'); const n=decryptNote(keys,bucket,id,blob); if(n.studentId!==sid) throw new ApiError(500,'تعذر التحقق من المخدوم.'); list.push(publicNote(n,ctx.me)); }
+  list.sort(sortNotes);
+  return {notes:list};
+}
+async function skillNotesAdd(ctx) {
+  const keys=notesGuard(ctx),sid=studentId(ctx.body.studentId),nid=noteId(ctx.body.noteId),fields=noteFields(ctx.body);
+  const schoolYear=typeof ctx.body.schoolYear==='string'?ctx.body.schoolYear.trim():'';
+  if(!schoolYear||schoolYear.length>64) throw new ApiError(400,'اختار سنة دراسية صحيحة.');
+  const student=await dbGet(ctx.cfg,'shamamsa/'+sid);
+  if(!isObj(student)) throw new ApiError(404,'ملف المخدوم مش موجود؛ احفظ الملف أولًا.');
+  if(!historyYears(student).has(schoolYear)) throw new ApiError(409,'السنة مش محفوظة في ملف المخدوم. احفظ بيانات السنة أولًا ثم أضف الملاحظة.');
+  await verifyNotesKey(ctx.cfg,keys,true);
+  const bucket=noteBucket(keys,sid),path=notePath(keys,sid,nid),now=Date.now();
+  let result=null,duplicate=false;
+  await transact(ctx.cfg,path,current=>{
+    if(current!==null && current!==undefined) {
+      const prev=decryptNote(keys,bucket,nid,current);
+      if(prev.studentId!==sid||prev.authorUsername!==ctx.me.uname||prev.schoolYear!==schoolYear||prev.category!==fields.category||prev.text!==fields.text) throw new ApiError(409,'معرّف الملاحظة مستخدم لبيانات مختلفة. جرّب إضافة جديدة.');
+      result=prev;duplicate=true;return undefined;
+    }
+    result={id:nid,studentId:sid,studentName:String(student.name||'').slice(0,160),schoolYear,category:fields.category,text:fields.text,authorUsername:ctx.me.uname,authorName:String(ctx.me.name||ctx.me.key).slice(0,120),createdAt:now,updatedAt:now,updatedBy:ctx.me.uname,version:crypto.randomBytes(18).toString('base64url'),lastMutation:''};
+    return encryptNote(keys,bucket,nid,result);
+  });
+  return {note:publicNote(result,ctx.me),duplicate};
+}
+async function skillNotesEdit(ctx) {
+  const keys=notesGuard(ctx),sid=studentId(ctx.body.studentId),nid=noteId(ctx.body.noteId),op=mutationId(ctx.body.mutationId),fields=noteFields(ctx.body);
+  const expected=typeof ctx.body.version==='string'?ctx.body.version:'';
+  if(!NOTE_ID_RE.test(expected)) throw new ApiError(400,'نسخة الملاحظة غير صالحة؛ حدّث القائمة.');
+  await verifyNotesKey(ctx.cfg,keys,false);
+  const bucket=noteBucket(keys,sid),path=notePath(keys,sid,nid),now=Date.now();let result=null;
+  await transact(ctx.cfg,path,current=>{
+    if(!current) throw new ApiError(404,'الملاحظة غير موجودة؛ حدّث القائمة.');
+    const prev=decryptNote(keys,bucket,nid,current);
+    if(prev.studentId!==sid||!canEditNote(ctx.me,prev)) throw new ApiError(403,'صاحب الملاحظة أو إدارة المدرسة فقط يقدروا يعدّلوها.');
+    if(prev.lastMutation===op && prev.updatedBy===ctx.me.uname) {
+      if(prev.text!==fields.text || prev.category!==fields.category) throw new ApiError(409,'العملية مستخدمة لبيانات مختلفة.');
+      result=prev;return undefined;
+    }
+    if(prev.version!==expected) throw new ApiError(409,'الملاحظة اتغيّرت من جهاز تاني؛ حدّثها وراجع التعديل.');
+    result=Object.assign({},prev,fields,{updatedAt:now,updatedBy:ctx.me.uname,version:crypto.randomBytes(18).toString('base64url'),lastMutation:op});
+    return encryptNote(keys,bucket,nid,result);
+  });
+  return {note:publicNote(result,ctx.me)};
+}
+async function skillNotesDelete(ctx) {
+  const keys=notesGuard(ctx),sid=studentId(ctx.body.studentId),nid=noteId(ctx.body.noteId);
+  mutationId(ctx.body.mutationId);
+  const expected=typeof ctx.body.version==='string'?ctx.body.version:'';
+  if(!NOTE_ID_RE.test(expected)) throw new ApiError(400,'نسخة الملاحظة غير صالحة؛ حدّث القائمة.');
+  await verifyNotesKey(ctx.cfg,keys,false);
+  const bucket=noteBucket(keys,sid),path=notePath(keys,sid,nid);
+  await transact(ctx.cfg,path,current=>{
+    if(!current)return undefined;
+    const prev=decryptNote(keys,bucket,nid,current);
+    if(prev.studentId!==sid||!canEditNote(ctx.me,prev)) throw new ApiError(403,'صاحب الملاحظة أو إدارة المدرسة فقط يقدروا يمسحوها.');
+    if(prev.version!==expected) throw new ApiError(409,'الملاحظة اتغيّرت من جهاز تاني؛ حدّث القائمة قبل المسح.');
+    return null;
+  });
+  return {deleted:true};
+}
+function notesNormalize(value) {
+  return String(value||'').normalize('NFKC').toLowerCase().replace(/[\u064b-\u065f\u0670\u0640]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[٠-٩]/g,c=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(c))).replace(/\s+/g,' ').trim();
+}
+async function skillNotesSearch(ctx) {
+  const keys=notesGuard(ctx),rawQuery=String(ctx.body.query||'').trim();
+  if(rawQuery.length>120) throw new ApiError(400,'كلمة البحث طويلة زيادة.');
+  const category=String(ctx.body.category||'');
+  if(category&&!has(NOTE_CATEGORIES,category)) throw new ApiError(400,'نوع الملاحظة غير معروف.');
+  const offset=Math.max(0,Math.min(100000,Math.floor(Number(ctx.body.offset)||0))),limit=Math.max(1,Math.min(100,Math.floor(Number(ctx.body.limit)||30)));
+  await verifyNotesKey(ctx.cfg,keys,false);
+  const [raw,roster]=await Promise.all([dbGet(ctx.cfg,NOTES_ROOT),dbGet(ctx.cfg,'shamamsa')]);
+  if(raw!==null&&!isObj(raw)) throw new ApiError(500,'بيانات الملاحظات غير صالحة؛ لم يتم عرض نتائج ناقصة.');
+  if(roster!==null&&!isObj(roster)) throw new ApiError(500,'قائمة المخدومين غير صالحة؛ لم يتم عرض نتائج ناقصة.');
+  const terms=notesNormalize(rawQuery).split(' ').filter(Boolean),matches=[];let checked=0;
+  for(const [bucket,group] of Object.entries(raw||{})) {
+    if(!/^[A-Za-z0-9_-]{43}$/.test(bucket)||!isObj(group)) throw new ApiError(500,'بيانات الملاحظات غير صالحة؛ لم يتم عرض نتائج ناقصة.');
+    for(const [id,blob] of Object.entries(group)) {
+      if(++checked>30000) throw new ApiError(413,'عدد الملاحظات كبير جدًا للبحث الحالي؛ تواصل مع المطور لتجهيز بحث مفهرس.');
+      if(!NOTE_ID_RE.test(id)) throw new ApiError(500,'بيانات الملاحظات غير صالحة.');
+      const n=decryptNote(keys,bucket,id,blob);if(category&&category!==n.category)continue;
+      const current=roster&&isObj(roster[n.studentId])?roster[n.studentId]:null;
+      const currentName=current?String(current.name||n.studentName||''):String(n.studentName||'');
+      const hay=notesNormalize([currentName,n.studentName,n.schoolYear,n.text,NOTE_CATEGORIES[n.category],n.authorName,n.authorUsername].join(' '));
+      if(!terms.every(x=>hay.includes(x)))continue;
+      const item=publicNote(n,ctx.me);item.currentName=currentName;item.studentExists=!!current;item.currentLevel=current?String(current.level||''):'';item.currentClass=current?String(current.classCode||''):'';matches.push(item);
+    }
+  }
+  matches.sort((a,b)=>String(a.currentName||'').localeCompare(String(b.currentName||''),'ar')||String(a.studentId).localeCompare(String(b.studentId))||sortNotes(a,b));
+  return {items:matches.slice(offset,offset+limit),total:matches.length,students:new Set(matches.map(x=>x.studentId)).size,offset,limit};
+}
+
 const ACTIONS = {
   accountLogin,
   status,
@@ -885,6 +1078,7 @@ const ACTIONS = {
   ownerGrant,
   save: (ctx) => saveOperation(ctx, false),
   saveToday: (ctx) => saveOperation(ctx, true),
+  skillNotesList, skillNotesAdd, skillNotesEdit, skillNotesDelete, skillNotesSearch,
 };
 
 /* ───────────────────────── الفحص (GET) ───────────────────────── */
@@ -927,7 +1121,7 @@ async function health(req) {
     credentialsFrom: cfg.source || null,
     serviceAccount: cfg.clientEmail ? maskEmail(cfg.clientEmail) : null,
     projectId: cfg.projectId,
-    optional: { ATTENDANCE_SESSION_SECRET: !!env('ATTENDANCE_SESSION_SECRET'), OWNER_PASSCODE: !!cfg.ownerPasscode },
+    optional: { ATTENDANCE_SESSION_SECRET: !!env('ATTENDANCE_SESSION_SECRET'), OWNER_PASSCODE: !!cfg.ownerPasscode, NOTES_ENCRYPTION_KEY: notesReady() },
     region: process.env.VERCEL_REGION || null,
     serverNow: Date.now(),
   };
@@ -993,7 +1187,7 @@ module.exports = async function handler(req, res) {
     if (action !== 'accountLogin') {
       ctx.session = readSession(cfg, body.session, uid);
       /* العمليات التي تمنح أو تستخدم الإذن تقرأ صلاحيات الحساب من المصدر فورًا، لا من كاش ١٥ ثانية. */
-      const sensitive = ['request', 'approve', 'reject', 'revoke', 'ownerGrant', 'save', 'saveToday'].includes(action);
+      const sensitive = ['request', 'approve', 'reject', 'revoke', 'ownerGrant', 'save', 'saveToday', 'skillNotesList', 'skillNotesAdd', 'skillNotesEdit', 'skillNotesDelete', 'skillNotesSearch'].includes(action);
       ctx.me = await loadMe(ctx, sensitive);
     }
     const out = await fn(ctx);
