@@ -15,7 +15,7 @@
 const crypto = require('crypto');
 
 const SERVICE = 'attendance-access';
-const VERSION = '2026.10.18';
+const VERSION = '2026.10.27-approval-renew-v2';
 const DEFAULT_DATABASE_URL = 'https://alshamamasahschool-default-rtdb.europe-west1.firebasedatabase.app';
 const DEFAULT_PROJECT_ID = 'alshamamasahschool';
 const OWNER = 'lucaskayser';
@@ -80,7 +80,7 @@ function cairoTime(ts) {
   catch (_) { return new Date(ts).toISOString().slice(11, 16); }
 }
 function newId(now) {
-  return 'r' + now.toString(36) + crypto.randomBytes(5).toString('hex');
+  return 'r2_' + now.toString(36) + crypto.randomBytes(5).toString('hex');
 }
 function maskEmail(email) {
   const [user, domain] = String(email).split('@');
@@ -399,8 +399,8 @@ function describe(key, s) {
     canAttend: owner || (!father && perms.includes('attendance')),
   };
 }
-async function loadMe(ctx) {
-  const map = await loadServants(ctx.cfg, false);
+async function loadMe(ctx, fresh = false) {
+  const map = await loadServants(ctx.cfg, fresh);
   const found = findServant(map, ctx.session.k);
   if (!found) throw new ApiError(401, 'الحساب ده مش موجود دلوقتي في قاعدة البيانات. سجّل خروج وادخل تاني.');
   const me = describe(found.key, found.s);
@@ -414,19 +414,57 @@ async function loadMe(ctx) {
 function mac(cfg, parts) {
   return b64url(crypto.createHmac('sha256', cfg.sessionKey).update(parts.map((x) => String(x === undefined ? '' : x)).join('|')).digest());
 }
+/* نفس توقيع الطلبات السابقة للحفاظ على التوافق أثناء تحديث الخدمة. */
 const originSig = (cfg, r) => mac(cfg, ['req1', r.id, r.username, r.approverUsername, r.createdAt, r.kind || 'request']);
 const grantSig = (cfg, r) => mac(cfg, ['grant1', r.id, r.username, r.approvedAt, r.accessUntil, r.decidedBy]);
+/* إثبات تاريخي مختلف عن توقيع الفتح؛ لا يصلح وحده للكتابة بعد الإنهاء. */
+const approvalHistorySig = (cfg, r) => mac(cfg, ['approved-history-v2', r.id, r.username, r.approvedAt, r.accessUntil, r.decidedBy]);
 const genuine = (cfg, r) => isObj(r) && typeof r.sig0 === 'string' && safeEqual(r.sig0, originSig(cfg, r));
 const grantOk = (cfg, r) => isObj(r) && typeof r.sig === 'string' && safeEqual(r.sig, grantSig(cfg, r));
+const normUser = (v) => String(v || '').trim().toLowerCase();
+
+/* صلاحية القرار لا تزيد عن خمس دقائق من وقت الطلب الموقّع، حتى لو غُيّر الحقل في قاعدة البيانات. */
+function pendingDeadline(r) {
+  const created = Number(r && r.createdAt);
+  const until = Number(r && r.approvalUntil);
+  if (!Number.isSafeInteger(created) || created <= 0 || !Number.isSafeInteger(until) || until <= created) return 0;
+  return Math.min(until, created + APPROVAL_MS);
+}
+
+/* إذن صالح فقط لطلب حقيقي وافق عليه المسؤول المختار، وليس صاحب الطلب نفسه.
+   الأذونات القديمة من نوع owner أو أي فتح ذاتي تُعتبر ملغاة حتى لو توقيعها القديم صحيح. */
+function approvedMetadataOk(cfg, r) {
+  if (!genuine(cfg, r) || (r.kind && r.kind !== 'request')) return false;
+  const requester = normUser(r.username), approver = normUser(r.approverUsername), decider = normUser(r.decidedBy);
+  if (!requester || !approver || !decider || requester === approver || requester === decider || approver !== decider) return false;
+  const created = Number(r.createdAt), approved = Number(r.approvedAt), until = Number(r.accessUntil);
+  const deadline = pendingDeadline(r);
+  return Number.isSafeInteger(created) && Number.isSafeInteger(approved) && Number.isSafeInteger(until)
+    && approved >= created && deadline > approved
+    && until > approved && until <= approved + ACCESS_MS;
+}
+function approvedByOther(cfg, r) {
+  return approvedMetadataOk(cfg, r) && grantOk(cfg, r);
+}
+/* الطلب الذي حصل على موافقة فعلية لا يُحسب كإزعاج عند إرسال طلب جديد.
+   v2 يطلب إثباتًا تاريخيًا مستقلاً. سجلات v1 المنتهية يدويًا فقدت توقيع الفتح
+   عمدًا؛ نقبل بيانات إغلاقها القديمة للتوافق فقط. إثبات التاريخ لا يفتح الحضور. */
+function hasApprovalHistory(cfg, r) {
+  if (!approvedMetadataOk(cfg, r)) return false;
+  if (approvedByOther(cfg, r)) return true;
+  if (typeof r.approvalHistory === 'string' && safeEqual(r.approvalHistory, approvalHistorySig(cfg, r))) return true;
+  return !String(r.id || '').startsWith('r2_') && r.status === 'revoked' && Number.isSafeInteger(Number(r.closedAt))
+    && Number(r.closedAt) >= Number(r.approvedAt) && !!normUser(r.closedBy);
+}
 
 const VIEW_FIELDS = ['id', 'kind', 'username', 'name', 'requesterPhone', 'approverUsername', 'approverName', 'status',
   'createdAt', 'approvalUntil', 'approvedAt', 'accessUntil', 'decidedBy', 'decidedByName', 'closedAt', 'closedBy',
   'closedByName', 'notifiedAt', 'lastSaveAt', 'saves'];
 
 function effectiveStatus(cfg, r, now) {
-  if (r.status === 'pending' && !(Number(r.approvalUntil) > now)) return 'expired';
+  if (r.status === 'pending' && !(pendingDeadline(r) > now)) return 'expired';
+  if ((r.status === 'active' || r.status === 'saving') && !approvedByOther(cfg, r)) return 'revoked';
   if ((r.status === 'active' || r.status === 'saving') && !(Number(r.accessUntil) > now)) return 'expired';
-  if ((r.status === 'active' || r.status === 'saving') && !grantOk(cfg, r)) return 'revoked';
   return r.status;
 }
 function view(cfg, r, now) {
@@ -449,7 +487,7 @@ function pruneUpdates(cfg, all, now) {
   }
   return u;
 }
-const isRunning = (cfg, r, now) => (r.status === 'active' || r.status === 'saving') && Number(r.accessUntil) > now && grantOk(cfg, r);
+const isRunning = (cfg, r, now) => ['active', 'saving'].includes(effectiveStatus(cfg, r, now));
 function closedText(r, st) {
   const texts = {
     rejected: 'الطلب ده اترفض بالفعل.',
@@ -485,6 +523,31 @@ async function bumpLogCount(cfg) {
 }
 
 /* ───────────────────────── العمليات ───────────────────────── */
+/* بعض الحسابات القديمة تحفظ كلمة المرور كما هي، وبعضها يحمل PBKDF2 ووسم zk1$.
+   لا نقبل قيمة التجزئة نفسها كأنها كلمة مرور قابلة للدخول. */
+async function verifyAccountPassword(s, password) {
+  const stored = s.password === undefined || s.password === null ? '' : String(s.password);
+  if (stored && !stored.startsWith('zk1$') && safeEqual(stored, password)) return true;
+  if (typeof s.passwordSalt !== 'string' || !s.passwordSalt) return false;
+  let salt;
+  try { salt = Buffer.from(s.passwordSalt, 'base64'); } catch (_) { return false; }
+  if (salt.length < 8 || salt.length > 64) return false;
+  async function verifyHash(input, encoded, iterations) {
+    if (typeof encoded !== 'string' || !encoded) return false;
+    const count = Number(iterations);
+    if (!Number.isSafeInteger(count) || count < 1 || count > 1000000) return false;
+    let expected;
+    try { expected = Buffer.from(encoded, 'base64'); } catch (_) { return false; }
+    if (expected.length !== 32) return false;
+    const actual = await new Promise((resolve, reject) => crypto.pbkdf2(input, salt, count, expected.length, 'sha256',
+      (err, derived) => err ? reject(err) : resolve(derived)));
+    return crypto.timingSafeEqual(actual, expected);
+  }
+  if (s.passwordHash && await verifyHash(password, String(s.passwordHash), Number(s.passwordIterations) || 120000)) return true;
+  if (stored.startsWith('zk1$')) return verifyHash('srv-api-v1:' + password, stored.slice(4), 60000);
+  return false;
+}
+
 async function accountLogin(ctx) {
   const { cfg, body, uid } = ctx;
   const username = String(body.username || '').trim().slice(0, 200);
@@ -495,8 +558,7 @@ async function accountLogin(ctx) {
   if (!found) throw new ApiError(401, 'الحساب ده مش موجود في قاعدة البيانات.');
   const { key, s } = found;
   const me = describe(key, s);
-  const stored = s.password === undefined || s.password === null ? '' : String(s.password);
-  let ok = stored !== '' && safeEqual(stored, password);
+  let ok = await verifyAccountPassword(s, password);
   if (!ok && me.isOwner && cfg.ownerPasscode && safeEqual(cfg.ownerPasscode, password)) ok = true;
   if (!ok) {
     throw new ApiError(401, me.isOwner && !cfg.ownerPasscode
@@ -544,32 +606,13 @@ async function approvers(ctx) {
   return { approvers: out };
 }
 
-async function ownerGrant(ctx) {
-  const { cfg, me } = ctx;
-  if (!me.isOwner) throw new ApiError(403, 'الفتح المباشر من غير موافقة لمدير السيستم بس.');
-  const now = Date.now();
-  const all = await loadRequests(cfg);
-  const running = requestList(cfg, all).find((r) => r.username === me.uname && isRunning(cfg, r, now));
-  if (running) return { id: running.id, request: view(cfg, running, now) };
-  const id = newId(now);
-  const rec = {
-    id, kind: 'owner', username: me.uname, name: me.name, requesterPhone: me.phone,
-    approverUsername: me.uname, approverName: me.name, status: 'active',
-    createdAt: now, approvalUntil: now, approvedAt: now, accessUntil: now + ACCESS_MS,
-    decidedBy: me.uname, decidedByName: me.name,
-  };
-  rec.sig0 = originSig(cfg, rec);
-  rec.sig = grantSig(cfg, rec);
-  const updates = Object.assign(pruneUpdates(cfg, all, now), { [PATHS.requests + '/' + id]: rec },
-    logEntry(me, 'فتح تعديل الحضور السابق مباشرة', 'مدير السيستم فتح تعديل الأيام السابقة لنفسه لمدة ٣٠ دقيقة (لحد ' + cairoTime(rec.accessUntil) + ').', now));
-  await dbPatch(cfg, '', updates);
-  await bumpLogCount(cfg);
-  return { id, request: view(cfg, rec, now) };
+/* المسار القديم باقٍ للرد الواضح على الصفحات القديمة، لكنه لا ينشئ أي إذن. */
+async function ownerGrant() {
+  throw new ApiError(403, 'الفتح المباشر متوقف. ابعت طلب موافقة لمسؤول آخر من داخل السيستم.');
 }
 
 async function request(ctx) {
   const { cfg, me, body } = ctx;
-  if (me.isOwner) return ownerGrant(ctx);
   if (!me.canRequest) throw new ApiError(403, 'صلاحية «طلب فتح الحضور» غير مفعلة لحسابك.');
   const map = await loadServants(cfg, true);
   const found = findServant(map, body.approverUsername);
@@ -583,11 +626,18 @@ async function request(ctx) {
   const mine = requestList(cfg, all).filter((r) => r.username === me.uname);
   const running = mine.find((r) => isRunning(cfg, r, now));
   if (running) return { id: running.id, request: view(cfg, running, now) };
-  const pending = mine.filter((r) => r.status === 'pending' && Number(r.approvalUntil) > now)
+  const pending = mine.filter((r) => r.status === 'pending' && pendingDeadline(r) > now)
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   if (pending.length && !body.renew && pending[0].approverUsername === ap.uname) return { id: pending[0].id, request: view(cfg, pending[0], now) };
-  if (mine.filter((r) => now - (Number(r.createdAt) || 0) < 30 * MINUTE).length >= 12) {
-    throw new ApiError(429, 'اتبعت طلبات كتير ورا بعض. استنى شوية وجرّب تاني.');
+  /* لا نعاقب التجديد الطبيعي بعد موافقة انتهت أو اتقفلت. نحمي المسؤول من
+     تكرار الطلبات غير المعتمدة، ونبدأ العد من آخر موافقة موثقة. */
+  const lastApproval = mine.reduce((latest, r) => hasApprovalHistory(cfg, r) ? Math.max(latest, Number(r.approvedAt) || 0) : latest, 0);
+  const unanswered = mine.filter((r) => {
+    const created = Number(r.createdAt) || 0;
+    return now - created < 30 * MINUTE && created > lastApproval && !hasApprovalHistory(cfg, r);
+  });
+  if (unanswered.length >= 12) {
+    throw new ApiError(429, 'اتبعت طلبات كتير من غير موافقة ورا بعض. استنى شوية وجرّب تاني.');
   }
   for (const old of pending) {
     await transact(cfg, PATHS.requests + '/' + old.id,
@@ -621,7 +671,8 @@ async function decide(ctx, kind) {
     const st = effectiveStatus(cfg, r, now);
     const isApprover = r.approverUsername === me.uname;
     if (kind === 'approve' || kind === 'reject') {
-      if (!isApprover && !me.isOwner) { err = new ApiError(403, 'الطلب ده مش موجه ليك.'); return undefined; }
+      if (normUser(r.username) === me.uname) { err = new ApiError(403, 'مينفعش توافق على طلبك بنفسك. اختار مسؤول تاني.'); return undefined; }
+      if (!isApprover) { err = new ApiError(403, 'الطلب ده مش موجه ليك.'); return undefined; }
       if (!me.canApprove) { err = new ApiError(403, 'صلاحية «موافقات فتح الحضور» مش مفعلة لحسابك.'); return undefined; }
       if (kind === 'approve') {
         if (st === 'active' || st === 'saving') { result = r; return undefined; } // اتوافق عليه قبل كده: من غير مدة جديدة
@@ -629,6 +680,7 @@ async function decide(ctx, kind) {
         if (st !== 'pending') { err = new ApiError(409, closedText(r, st)); return undefined; }
         result = Object.assign({}, r, { status: 'active', approvedAt: now, accessUntil: now + ACCESS_MS, decidedBy: me.uname, decidedByName: me.name });
         result.sig = grantSig(cfg, result);
+        result.approvalHistory = approvalHistorySig(cfg, result);
       } else {
         if (st === 'rejected') { result = r; return undefined; }
         if (st === 'active' || st === 'saving') { err = new ApiError(409, 'الطلب ده اتوافق عليه بالفعل. لو عايز تقفله استخدم «إنهاء إذن التعديل».'); return undefined; }
@@ -639,6 +691,8 @@ async function decide(ctx, kind) {
       if (r.username !== me.uname && !isApprover && !me.isOwner) { err = new ApiError(403, 'مش من حقك تقفل الطلب ده.'); return undefined; }
       if (!(st === 'pending' || st === 'active' || st === 'saving')) { result = r; return undefined; } // مقفول أصلًا
       result = Object.assign({}, r, { status: 'revoked', closedAt: now, closedBy: me.uname, closedByName: me.name });
+      if (approvedByOther(cfg, r)) result.approvalHistory = approvalHistorySig(cfg, r);
+      delete result.sig; // لا نترك توقيع إذن فعّال في سجل تم إغلاقه
     }
     changed = true;
     return result;
@@ -717,7 +771,7 @@ function describeChange(p, changed, grant) {
   const items = changed.slice(0, 12).map((n) => n + ': ' + (p.patch[n] === null ? 'اتشال' : (STATUS_AR[p.patch[n]] || String(p.patch[n]))));
   const more = changed.length > 12 ? ' … و' + (changed.length - 12) + ' كمان' : '';
   let via = '';
-  if (grant) via = grant.kind === 'owner' ? ' (فتح مباشر من مدير السيستم)' : ' (بموافقة ' + (grant.decidedByName || grant.approverName || '') + ')';
+  if (grant) via = ' (بموافقة ' + (grant.decidedByName || grant.approverName || '') + ')';
   return level + cls + ' يوم ' + p.date + via + ': ' + items.join('، ') + more;
 }
 
@@ -733,14 +787,14 @@ async function saveOperation(ctx, todayMode) {
     gid = checkId(p.id, 'رقم إذن الفتح غير صحيح.');
     grant = await dbGet(cfg, PATHS.requests + '/' + gid);
     if (!isObj(grant) || grant.id !== gid || grant.username !== me.uname || !genuine(cfg, grant)) throw new ApiError(403, 'إذن فتح الحضور ده غير صحيح لحسابك.');
+    if (!me.canRequest) throw new ApiError(403, 'صلاحية «طلب فتح الحضور» غير مفعلة لحسابك دلوقتي.');
+    if (!(p.date < cairoDate(Date.now()))) throw new ApiError(400, 'التاريخ ده مش يوم سابق — حضور النهاردة بيتسجل عادي من غير موافقة.');
+    if (!approvedByOther(cfg, grant)) throw new ApiError(403, 'الإذن غير مرتبط بموافقة المسؤول المختار أو اتقفل. ابعت طلب جديد.');
     const done = isObj(grant.ops) ? grant.ops[p.opId] : null;
     if (isObj(done)) return { duplicate: true, key: done.key, changed: done.changed || 0, accessUntil: grant.accessUntil };
     if (grant.status === 'revoked') throw new ApiError(409, 'الموافقة اتسحبت، وتعديل الأيام السابقة اتقفل. اطلب موافقة جديدة.');
     if (grant.status !== 'active' && grant.status !== 'saving') throw new ApiError(409, 'الطلب ده لسه مش متوافق عليه أو اتقفل — تعديل الأيام السابقة غير متاح.');
-    if (!(Number(grant.accessUntil) > now)) throw new ApiError(409, 'انتهت الـ٣٠ دقيقة بتاعة فتح الحضور. اطلب موافقة جديدة.');
-    if (!grantOk(cfg, grant)) throw new ApiError(403, 'إذن فتح الحضور ده غير صحيح (التوقيع مش مطابق). اطلب موافقة جديدة.');
-    if (!me.canRequest) throw new ApiError(403, 'صلاحية «طلب فتح الحضور» غير مفعلة لحسابك دلوقتي.');
-    if (!(p.date < today)) throw new ApiError(400, 'التاريخ ده مش يوم سابق — حضور النهاردة بيتسجل عادي من غير موافقة.');
+    if (!(Number(grant.accessUntil) > Date.now())) throw new ApiError(409, 'انتهت الـ٣٠ دقيقة بتاعة فتح الحضور. اطلب موافقة جديدة.');
     opPath = PATHS.requests + '/' + gid + '/ops/' + p.opId;
   } else {
     if (p.date !== today) throw new ApiError(400, 'التاريخ ده مش يوم النهاردة — تعديل الأيام السابقة محتاج موافقة فتح الحضور.');
@@ -750,13 +804,28 @@ async function saveOperation(ctx, todayMode) {
     if (isObj(done)) return { duplicate: true, key: done.key, changed: done.changed || 0 };
   }
 
+  /* أعد فحص حالة الإذن قبيل الكتابة: لو المسؤول سحبه أو المدة انتهت أثناء الشبكة، نرفض. */
+  if (grant) {
+    const freshGrant = await dbGet(cfg, PATHS.requests + '/' + gid);
+    if (!isObj(freshGrant) || freshGrant.id !== gid || freshGrant.username !== me.uname
+      || !isRunning(cfg, freshGrant, Date.now())) {
+      throw new ApiError(409, 'إذن فتح الحضور انتهى أو اتسحب قبل الحفظ. اطلب موافقة جديدة.');
+    }
+    grant = freshGrant;
+  }
   const key = p.date + '__' + p.levelIndex + '__' + p.classCode;
   let conflict = null;
+  let finalizedConflict = false;
+  let expiredWhileSaving = false;
   let changed = [];
   await transact(cfg, PATHS.attendance + '/' + key, (node) => {
     conflict = null;
+    finalizedConflict = false;
+    expiredWhileSaving = false;
     changed = [];
+    if (grant && !(Number(grant.accessUntil) > Date.now())) { expiredWhileSaving = true; return undefined; }
     const cur = isObj(node) ? node : null;
+    if (todayMode && cur && cur.finalized === true) { finalizedConflict = true; return undefined; }
     const records = Object.assign({}, cur && isObj(cur.records) ? cur.records : {});
     for (const n of Object.keys(p.patch)) {
       const haveNow = has(records, n) ? records[n] : null;
@@ -782,6 +851,8 @@ async function saveOperation(ctx, todayMode) {
     out.updatedAt = now;
     return out;
   });
+  if (expiredWhileSaving) throw new ApiError(409, 'انتهت الـ٣٠ دقيقة قبل حفظ التعديل. اطلب موافقة جديدة.');
+  if (finalizedConflict) throw new ApiError(409, 'حضور اليوم ده مؤكد ومغلق؛ لم يتم حفظ التعديل.');
   if (conflict) throw new ApiError(409, 'حضور «' + conflict + '» اتغير من جهاز تاني بعد ما فتحت اليوم ده. حدّث الصفحة وراجع قبل ما تحفظ.');
 
   const updates = { [opPath]: { at: now, key, changed: changed.length, by: me.uname } };
@@ -921,7 +992,9 @@ module.exports = async function handler(req, res) {
     const ctx = { cfg, uid, body };
     if (action !== 'accountLogin') {
       ctx.session = readSession(cfg, body.session, uid);
-      ctx.me = await loadMe(ctx);
+      /* العمليات التي تمنح أو تستخدم الإذن تقرأ صلاحيات الحساب من المصدر فورًا، لا من كاش ١٥ ثانية. */
+      const sensitive = ['request', 'approve', 'reject', 'revoke', 'ownerGrant', 'save', 'saveToday'].includes(action);
+      ctx.me = await loadMe(ctx, sensitive);
     }
     const out = await fn(ctx);
     return send(res, method, 200, Object.assign({ ok: true }, out || {}, { serverNow: Date.now() }));
