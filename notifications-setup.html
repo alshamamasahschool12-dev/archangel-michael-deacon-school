@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#6b0f45">
+  <title>إعداد إشعارات المسؤول</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#f7f1e5;color:#241b20;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:24px;line-height:1.7}.card{max-width:520px;margin:5vh auto;background:#fff;border-radius:18px;padding:24px;box-shadow:0 8px 32px #32132820}h1{font-size:1.35rem;color:#6b0f45;margin-top:0}p{color:#5f5660}.field{display:block;margin:14px 0 6px;font-weight:650}input{width:100%;padding:12px;border:1px solid #d8cbd3;border-radius:10px;font:inherit;direction:ltr}button{border:0;border-radius:10px;padding:12px 16px;font:inherit;font-weight:700;cursor:pointer;background:#6b0f45;color:#fff;margin-top:14px;width:100%}button:disabled{opacity:.6;cursor:wait}.secondary{background:#eee7eb;color:#382a33}.status{margin-top:16px;padding:12px;border-radius:10px;background:#f3eef1;white-space:pre-wrap}.small{font-size:.88rem}.hidden{display:none}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>إعداد إشعارات المسؤول</h1>
+    <p>سجّل الدخول بحساب Firebase للمسؤول، ثم اسمح بالإشعارات على هذا الجهاز. هذه الصفحة مخصصة للمسؤول فقط.</p>
+    <label class="field" for="email">البريد الإلكتروني</label>
+    <input id="email" type="email" autocomplete="username" required>
+    <label class="field" for="password">كلمة مرور Firebase</label>
+    <input id="password" type="password" autocomplete="current-password" required>
+    <button id="enable">تسجيل الدخول وتفعيل إشعارات هذا الجهاز</button>
+    <button id="logout" class="secondary hidden">تسجيل الخروج</button>
+    <div id="status" class="status" role="status">جاهز.</div>
+    <p class="small">لا تشارك كلمة المرور أو مفتاح Web Push. على iPhone/iPad، افتح الموقع من الشاشة الرئيسية بعد تثبيته كتطبيق ويب.</p>
+  </main>
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getAuth, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js';
+  import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js';
+
+  const firebaseConfig = {
+    apiKey: 'AIzaSyBGQL2NhNW37LR6rkMe_RhuV5vlWVV4yGw',
+    authDomain: 'alshamamasahschool.firebaseapp.com',
+    databaseURL: 'https://alshamamasahschool-default-rtdb.europe-west1.firebasedatabase.app',
+    projectId: 'alshamamasahschool',
+    storageBucket: 'alshamamasahschool.firebasestorage.app',
+    messagingSenderId: '708082510989',
+    appId: '1:708082510989:web:b1064a9664fcf66b0c86c4'
+  };
+  // Replace with the PUBLIC key from Firebase Console > Project settings > Cloud Messaging > Web Push certificates.
+  const VAPID_PUBLIC_KEY = 'BHQX3_et4N-LRsdgndjKx-d1sPdUKY6bgm7Bh_gbJwuCbX_eNGZU92GjhRJk3S5ioAAMQ1BK9FBWbPMOcudoNPA';
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const messaging = getMessaging(app);
+  const functions = getFunctions(app, 'europe-west1');
+  const registerToken = httpsCallable(functions, 'registerAdminWebPushToken');
+  const $ = (id) => document.getElementById(id);
+  const say = (text) => { $('status').textContent = text; };
+
+  $('enable').addEventListener('click', async () => {
+    const button = $('enable'); button.disabled = true;
+    try {
+      if (!('Notification' in window) || !('serviceWorker' in navigator)) throw new Error('هذا المتصفح لا يدعم إشعارات الويب. جرّب Chrome على Android أو ثبّت الموقع على الشاشة الرئيسية في iPhone.');
+      if (VAPID_PUBLIC_KEY.includes('PASTE_')) throw new Error('ضع مفتاح Web Push العام في الملف أولًا، ولا تضع المفتاح الخاص.');
+      say('جارٍ تسجيل الدخول...');
+      await signInWithEmailAndPassword(auth, $('email').value.trim(), $('password').value);
+      say('جارٍ طلب إذن الإشعارات...');
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') throw new Error('لم يتم منح إذن الإشعارات.');
+      const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      await navigator.serviceWorker.ready;
+      const token = await getToken(messaging, { vapidKey: VAPID_PUBLIC_KEY, serviceWorkerRegistration: registration });
+      if (!token) throw new Error('لم يتمكن Firebase من إنشاء رمز لهذا الجهاز.');
+      await registerToken({ token });
+      say('تم تفعيل إشعارات المسؤول على هذا الجهاز. اترك إذن الإشعارات مفعّلًا في إعدادات المتصفح.');
+      $('logout').classList.remove('hidden');
+    } catch (error) {
+      console.error(error);
+      say(error.message || 'تعذر تفعيل الإشعارات.');
+    } finally { button.disabled = false; }
+  });
+
+  $('logout').addEventListener('click', async () => {
+    await signOut(auth);
+    say('تم تسجيل الخروج.');
+    $('logout').classList.add('hidden');
+  });
+  onMessage(messaging, (payload) => {
+    const n = payload.notification || {};
+    say(`إشعار أثناء فتح الصفحة: ${n.title || 'طلب جديد'} — ${n.body || ''}`);
+  });
+</script>
+</body>
+</html>
