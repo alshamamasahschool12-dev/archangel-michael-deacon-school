@@ -91,20 +91,40 @@ async function passwordMatches(account, password) {
   if (stored.startsWith('zk1$')) return verify(stored.slice(4), 60000, 'srv-api-v1:' + password);
   return false;
 }
-function rateAllowed(ip) {
+function rateAllowed(ip, bucket = 'login', max = 8, windowMs = 15 * 60 * 1000) {
   const now = Date.now();
-  const old = attempts.get(ip);
-  if (!old || now - old.start > 15 * 60 * 1000) { attempts.set(ip, { start: now, count: 1 }); return true; }
-  if (old.count >= 8) return false;
+  const key = `${bucket}:${ip}`;
+  const old = attempts.get(key);
+  if (!old || now - old.start > windowMs) { attempts.set(key, { start: now, count: 1 }); return true; }
+  if (old.count >= max) return false;
   old.count++;
   return true;
 }
 module.exports = async function ownerFirebaseLogin(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed.' }); return; }
   const ip = String(req.headers['x-vercel-forwarded-for'] || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
-  if (!rateAllowed(ip)) { res.status(429).json({ error: 'محاولات كثيرة. انتظر ١٥ دقيقة ثم حاول مرة أخرى.' }); return; }
+  const query = new URL(req.url || '/', 'https://local.invalid').searchParams;
+  if (req.method === 'GET' && query.get('action') === 'preview') {
+    const username = String(query.get('username') || '').trim().toLowerCase();
+    if (username !== OWNER) { res.status(404).json({ error: 'Not found.' }); return; }
+    if (!rateAllowed(ip, 'preview', 60, 15 * 60 * 1000)) { res.status(429).json({ error: 'انتظر قليلًا ثم حاول مرة أخرى.' }); return; }
+    try {
+      const accountConfig = getAccountConfig();
+      const accessToken = await googleAccessToken(accountConfig);
+      const found = await fetchOwnerRecord(accessToken);
+      if (!found || !found.account || found.account.disabled) { res.status(404).json({ error: 'Not found.' }); return; }
+      const photoUrl = typeof found.account.photoUrl === 'string' && found.account.photoUrl.startsWith('https://') && found.account.photoUrl.length <= 2048 ? found.account.photoUrl : '';
+      const name = String(found.account.name || OWNER).slice(0, 100);
+      res.status(200).json({ name, photoUrl, username: OWNER });
+    } catch (error) {
+      console.error('owner profile preview failed:', error && error.message || error);
+      res.status(503).json({ error: 'تعذر تحميل معاينة الحساب الآن.' });
+    }
+    return;
+  }
+  if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed.' }); return; }
+  if (!rateAllowed(ip, 'login', 8, 15 * 60 * 1000)) { res.status(429).json({ error: 'محاولات كثيرة. انتظر ١٥ دقيقة ثم حاول مرة أخرى.' }); return; }
   let body = req.body;
   if (Buffer.isBuffer(body)) body = body.toString('utf8');
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch (_) { body = {}; } }
