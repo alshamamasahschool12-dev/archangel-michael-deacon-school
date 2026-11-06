@@ -5242,8 +5242,8 @@ function buildCompletionMessage(r, kind){
   L.push("");
   L.push("شاكرين جدًا محبتكم واهتمامكم وتعبكم معنا 🙏");
   L.push("صلوا لأجل الخدمة 🕊️");
-  L.push("*إدارة مدرسة الشمامسة*");
-  L.push("*أ/ مدحت ميلاد*");
+  L.push("*سكرتارية مدرسة الشمامسة*");
+  L.push("*الملاك ميخائيل — عزبة النخل بالأندلس*");
   return L.join("\n");
 }
 function sendCompletionWa(recordId){
@@ -5485,7 +5485,7 @@ function waButtonHtml(phone, name, isAbsent, extraHtml){
   let wa = "";
   if(allowWa){
     if(isAbsent){
-      const msg = `سلام ونعمة يا ${dName} ✝️، بنطمن عليك من مدرسة الملاك ميخائيل للشمامسة، افتقدناك في الخدمة الماضية ونتمنى تكون بألف خير وصحة. مستنيينك تشاركنا في الحصة القادمة إن شاء الله!\n\n*إدارة مدرسة الشمامسة*\n*أ/ مدحت ميلاد*`;
+      const msg = `سلام ونعمة يا ${dName} ✝️، بنطمن عليك من مدرسة الملاك ميخائيل للشمامسة، افتقدناك في الخدمة الماضية ونتمنى تكون بألف خير وصحة. مستنيينك تشاركنا في الحصة القادمة إن شاء الله!\n\n*سكرتارية مدرسة الشمامسة*\n*الملاك ميخائيل — عزبة النخل بالأندلس*`;
       wa = cpBtn("alert","افتقاد",CP_WA_SVG,`https://wa.me/${intlPhone}?text=${encodeURIComponent(msg)}`,"افتقاد الغياب بالواتساب");
     } else {
       wa = cpBtn("wa","واتساب",CP_WA_SVG,`https://wa.me/${intlPhone}`);
@@ -6428,7 +6428,8 @@ document.addEventListener("click",function(e){
     L.push("");
     L.push("نشكر ربنا على خدمته/خدمتها 🙏 وبرجاء المتابعة معنا.");
     L.push("*مدرسة الملاك ميخائيل للشمامسة*");
-    L.push("*إدارة مدرسة الشمامسة — أ/ مدحت ميلاد*");
+    L.push("*سكرتارية مدرسة الشمامسة*");
+    L.push("*الملاك ميخائيل — عزبة النخل بالأندلس*");
     return L.join("\n");
   }
 
@@ -6823,7 +6824,7 @@ document.addEventListener("click",function(e){
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;width:100%;margin-top:4px;justify-content:flex-end">
           <button type="button" class="pr-btn small ${x.followedUp ? "" : "gold"}" onclick="PR_toggleAbsenceFollowup('${esc(x.followupKey)}')">${x.followedUp ? "↩️ إلغاء علامة الافتقاد" : "✅ علّم إنه تم افتقاده"}</button>
-          ${(x.phone && can(P_PERMS.contactWhatsapp)) ? `<a class="pr-btn small green" target="_blank" rel="noopener" onclick="PR_markFollowedUpOnContact('${esc(x.followupKey)}')" href="${esc(waLink(x.phone, "سلام ونعمة يا " + x.name + " ✝️ بنطمن عليك من مدرسة الملاك ميخائيل للشمامسة، افتقدناك في آخر " + ar(x.streak) + " مرات خدمة ونتمنى تكون بألف خير وصحة. مستنيينك تنوّرنا في المرة الجاية إن شاء الله!"))}">📱 واتساب افتقاد</a>` : ""}
+          ${(x.phone && can(P_PERMS.contactWhatsapp)) ? `<a class="pr-btn small green" target="_blank" rel="noopener" onclick="PR_markFollowedUpOnContact('${esc(x.followupKey)}')" href="${esc(waLink(x.phone, "سلام ونعمة يا " + x.name + " ✝️ بنطمن عليك من مدرسة الملاك ميخائيل للشمامسة، افتقدناك في آخر " + ar(x.streak) + " مرات خدمة ونتمنى تكون بألف خير وصحة. مستنيينك تنوّرنا في المرة الجاية إن شاء الله!\n\n*سكرتارية مدرسة الشمامسة*\n*الملاك ميخائيل — عزبة النخل بالأندلس*"))}">📱 واتساب افتقاد</a>` : ""}
           ${(x.phone && can(P_PERMS.contactCall)) ? `<a class="pr-btn small" onclick="PR_markFollowedUpOnContact('${esc(x.followupKey)}')" href="tel:${esc(prPhoneDigits(x.phone))}">📞 اتصال</a>` : ""}
           ${can(P_PERMS.parentReport) ? `<button type="button" class="pr-btn small" onclick="PR_closeAbsence(); PR_openParentReport('${esc(x.id)}')">📋 تقرير ولي الأمر</button>` : ""}
           <button type="button" class="pr-btn small" onclick="PR_closeAbsence(); editRecord('${esc(x.id)}')">✏️ فتح</button>
@@ -8535,7 +8536,7 @@ html.dark .cel-btn.primary{background:linear-gradient(150deg,#e0559f,#a3186b)}
     var hasLogin=s.role!=="noaccess";
     var roleTxt=s.role==="admin"?"👑 إدارة المدرسة":(s.role==="noaccess"?"🚫 حضور وغياب فقط":"🧩 خادم بصلاحيات مخصّصة");
     var loginUrl=location.href.split("#")[0].split("?")[0];
-    var creds="سلام ونعمة يا "+s.name+" 🕊️\nاتعملّك حساب على سيستم مدرسة الملاك ميخائيل للشمامسة.\n\n👤 اسم المستخدم: "+s.username+"\n🔑 كلمة المرور: "+s.password+"\n🔗 رابط الدخول: "+loginUrl+"\n\nربنا يبارك خدمتك ✝️";
+    var creds="سلام ونعمة يا "+s.name+" 🕊️\nاتعملّك حساب على سيستم مدرسة الملاك ميخائيل للشمامسة.\n\n👤 اسم المستخدم: "+s.username+"\n🔑 كلمة المرور: "+s.password+"\n🔗 رابط الدخول: "+loginUrl+"\n\nربنا يبارك خدمتك ✝️\n\n*سكرتارية مدرسة الشمامسة*\n*الملاك ميخائيل — عزبة النخل بالأندلس*";
     var actions=[];
     if(hasLogin){
       var wa=waIntl(s.phone);
@@ -30183,7 +30184,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
       '🎓 البرامج المسجلة: '+programLabels(rec).join(' • '),'',
       '🔗 *فتح البطاقة:* '+cardUrl(rec),'',
       'لو الصورة مرفقة مع الرسالة، ممكن تحفظها في الموبايل أو تطبعها. ربنا يبارك خدمتكم ومحبتكم 🕊️',
-      '*إدارة مدرسة الشمامسة*'
+      '*سكرتارية مدرسة الشمامسة*',
+      '*الملاك ميخائيل — عزبة النخل بالأندلس*'
     ];
     return lines.join('\n');
   }
@@ -30564,4 +30566,4 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 })();
 
 </script>
-</body> </html>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a566d05c9f34df81',t:'MTc5Mzk5NjU4NA=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a566d05c9f34df81',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body> </html>
