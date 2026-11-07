@@ -30780,12 +30780,17 @@ html.dark .wa-sent-line{background:rgba(255,255,255,.05)}
 .wa-sent-line.is-warm{color:#8a5300;border-color:rgba(232,145,42,.45);background:rgba(232,145,42,.10)}
 .wa-sent-line.is-warm .wa-sent-dot{background:#e8912a;box-shadow:0 0 0 3px rgba(232,145,42,.2)}
 .wa-sent-line.never{color:#0f7a3d;border-color:rgba(37,211,102,.35);background:rgba(37,211,102,.07)}
-/* شريط لون جانبي بسيط على الكارت حسب الحالة */
-.gh-year-card.wa-card-card{position:relative;overflow:hidden}
-.gh-year-card.wa-card-card::before{content:'';position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px;background:#25d366;opacity:.85}
-.gh-year-card.wa-card-card[data-wa-state="hot"]::before{background:#d92d20}
-.gh-year-card.wa-card-card[data-wa-state="warm"]::before{background:#e8912a}
-.gh-year-card.wa-card-card[data-wa-state="nophone"]::before{background:#9ca3af}
+/* شريط لون جانبي على الكارت حسب الحالة
+   ملاحظة مهمة: ممنوع overflow:hidden هنا — هو اللي كان بيخلي الكروت تنضغط
+   لما يبقوا كتير جوه .gh-modal-list (flex column). بنستخدم border بدل pseudo-element. */
+.gh-year-card.wa-card-card{position:relative;flex:0 0 auto;flex-shrink:0;overflow:visible;min-height:auto;
+  border-inline-start:4px solid #25d366}
+.gh-year-card.wa-card-card[data-wa-state="hot"]{border-inline-start-color:#d92d20}
+.gh-year-card.wa-card-card[data-wa-state="warm"]{border-inline-start-color:#e8912a}
+.gh-year-card.wa-card-card[data-wa-state="nophone"]{border-inline-start-color:#9ca3af}
+.gh-year-card.wa-card-card[data-wa-state="complete"]{border-inline-start-color:#25d366}
+/* كل عناصر قائمة المودال ما تنضغطش (حماية عامة) */
+#missing-data-modal-list > *{flex-shrink:0;min-height:auto}
 </style>
 <script id="wa-track-script">
 /* ============================================================
