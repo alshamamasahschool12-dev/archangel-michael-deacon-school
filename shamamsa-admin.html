@@ -30731,7 +30731,7 @@ document.addEventListener('DOMContentLoaded',svxEnsureUi);setTimeout(svxEnsureUi
 </script>
 
 <script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a56c3fb99fd66489',t:'MTc5NDA1MzU3NA=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a56c3fb99fd66489',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
-<!-- ===== تتبّع إرسال رسائل استكمال البيانات (واتساب) — بداية الإضافة ===== -->
+<!-- ===== WA-TRACK-V1 START ===== -->
 <style id="wa-track-styles">
 /* ===== 🟢 تتبّع إرسال الواتساب: ألوان الحالة على أيقونة الاسم ===== */
 .wa-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center;flex:0 0 28px;width:28px;height:28px;margin-inline-start:6px;vertical-align:middle;overflow:visible}
@@ -30765,9 +30765,10 @@ document.addEventListener('DOMContentLoaded',svxEnsureUi);setTimeout(svxEnsureUi
 .wa-filter-btn[data-wa-filter="fresh"]{border-color:rgba(37,211,102,.5)}
 
 /* ===== زرار الواتساب الكبير داخل الكارت ===== */
-.wa-btn.wa-state-wa-hot{background:linear-gradient(135deg,#ff6b5e,#d92d20)!important;box-shadow:0 2px 10px rgba(217,45,32,.35)!important}
-.wa-btn.wa-state-wa-warm{background:linear-gradient(135deg,#ffc94d,#e8912a)!important;color:#4a2c00!important;box-shadow:0 2px 10px rgba(232,145,42,.32)!important}
-.wa-btn.wa-state-wa-fresh,.wa-btn.wa-state-wa-complete{background:linear-gradient(135deg,#25d366,#128c7e)!important}
+.wa-btn.wa-hot,.wa-btn.wa-state-wa-hot{background:linear-gradient(135deg,#ff6b5e,#d92d20)!important;color:#fff!important;box-shadow:0 2px 10px rgba(217,45,32,.35)!important}
+.wa-btn.wa-warm,.wa-btn.wa-state-wa-warm{background:linear-gradient(135deg,#ffc94d,#e8912a)!important;color:#4a2c00!important;box-shadow:0 2px 10px rgba(232,145,42,.32)!important}
+.wa-btn.wa-fresh,.wa-btn.wa-complete,.wa-btn.wa-state-wa-fresh,.wa-btn.wa-state-wa-complete{background:linear-gradient(135deg,#25d366,#128c7e)!important;color:#fff!important}
+.wa-btn.wa-nophone{background:var(--card-border)!important;color:var(--text-sub)!important;box-shadow:none!important}
 
 /* سطر «آخر إرسال» تحت شيبس البيانات الناقصة */
 .wa-sent-line{display:flex;align-items:center;gap:7px;font-size:.76rem;font-weight:700;color:var(--text-sub);background:rgba(0,0,0,.035);border:1px dashed var(--card-border);border-radius:10px;padding:6px 10px;margin-top:2px}
@@ -30788,80 +30789,135 @@ html.dark .wa-sent-line{background:rgba(255,255,255,.05)}
 </style>
 <script id="wa-track-script">
 /* ============================================================
-   🟢 تتبّع إرسال رسائل استكمال البيانات على واتساب (فريق الخدام)
-   - لو حد من الفريق بعت لواحد: الزرار يبقى أحمر ٤٨ ساعة،
-     وبعدها أصفر ٤٨ ساعة، وبعد ٤ أيام يرجع أخضر.
-   - الزرار شغال في كل الحالات (بس فيه تحذير لو حد تاني بعت قريب).
-   - بيانات مكتملة = أيقونة خضراء + ⭐ فوقها.
+   تتبّع إرسال رسائل استكمال البيانات على واتساب — V1.1
+   - الزرار بيتلوّن: 🟢 جاهز / 🔴 اتبعت في ٤٨ ساعة / 🟡 لحد ٤ أيام / ⭐ مكتمل
+   - لو حد من الفريق بعت قبل كده: تحذير باسمه (الاسم من الحساب الحالي)
+   - ترتيب الأرقام: المخدوم ← الأم ← الأب
+   ملاحظة تقنية: بعض متغيرات السيستم معرّفة بـ let/const (مش على window)،
+   فبنقراها عن طريق indirect eval عشان نضمن الوصول الصح.
    ============================================================ */
 (function () {
   "use strict";
 
-  /* ---------- إعدادات (تقدر تغيّرها من هنا) ---------- */
+  /* ---------- الوصول لمتغيرات/دوال السيستم الأصلية ---------- */
+  var _ev = eval;
+  function g(name) {
+    try { return _ev(name); } catch (_) { return window[name]; }
+  }
+  function missingFieldsDef() {
+    var def = g("MISSING_DATA_FIELDS");
+    return Array.isArray(def) ? def : [];
+  }
+  function allRecs() {
+    var a = g("allRecords");
+    return Array.isArray(a) ? a : [];
+  }
+
+  /* ---------- إعدادات ---------- */
   var WA_HOT_MS = 48 * 60 * 60 * 1000;   // 🔴 أول ٤٨ ساعة
-  var WA_COLD_MS = 96 * 60 * 60 * 1000;  // 🟡 لحد ٤ أيام، وبعدها 🟢
+  var WA_COLD_MS = 96 * 60 * 60 * 1000;  // 🟡 لحد ٤ أيام
   var WA_SENDS_PATH = "shamamsa-wa-completion-sends";
+  var WA_LS_KEY = "wa-completion-sends-cache-v1";
 
   var WA_SVG = '<svg viewBox="0 0 32 32" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M20.2 17.9c-.33-.17-1.95-.96-2.25-1.07-.3-.11-.52-.17-.74.17-.22.33-.85 1.07-1.04 1.3-.19.22-.38.25-.71.08-.33-.17-1.39-.51-2.65-1.63-.98-.87-1.64-1.95-1.83-2.28-.19-.33-.02-.5.14-.67.15-.15.33-.38.5-.58.17-.19.22-.33.33-.55.11-.22.06-.42-.03-.58-.08-.17-.74-1.78-1.01-2.44-.27-.64-.54-.55-.74-.56-.19-.01-.41-.01-.63-.01-.22 0-.58.08-.88.42-.3.33-1.15 1.13-1.15 2.75s1.18 3.19 1.34 3.41c.17.22 2.32 3.54 5.63 4.97.79.34 1.4.54 1.88.7.79.25 1.5.21 2.07.13.63-.09 1.95-.8 2.22-1.57.28-.77.28-1.42.19-1.56-.08-.14-.3-.22-.63-.39zM16 3C8.8 3 3 8.8 3 16c0 2.3.6 4.5 1.7 6.4L3 29l6.8-1.8c1.8 1 3.9 1.5 6.2 1.5 7.2 0 13-5.8 13-13S23.2 3 16 3zm0 23.7c-2 0-3.9-.6-5.5-1.6l-.4-.2-4 1 1.1-3.9-.3-.4C5.8 19.9 5.3 18 5.3 16 5.3 9.9 10.1 5.3 16 5.3S26.7 10.1 26.7 16 21.9 26.7 16 26.7z"/></svg>';
 
-  /* ---------- مخزن الإرسالات (Firebase live) ---------- */
-  var waSends = {};        // { recordId: {at, by, user, phone, kind, label, count, prevAt} }
-  var waSendsReady = false;
-
+  /* ---------- أدوات صغيرة ---------- */
   function waNow() {
-    try { return Date.now() + (window._serverTimeOffset || 0); } catch (_) { return Date.now(); }
+    var off = 0;
+    try { off = window._serverTimeOffset || 0; } catch (_) { }
+    return Date.now() + off;
   }
-  function waEsc(v) {
-    if (typeof window.escapeHtml === "function") return window.escapeHtml(String(v == null ? "" : v));
+  function esc(v) {
+    try { if (typeof g("escapeHtml") === "function") return g("escapeHtml")(String(v == null ? "" : v)); } catch (_) { }
     return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) {
       return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
     });
   }
-  function waDigits(txt) {
-    try { return window.toArabicDigits ? window.toArabicDigits(txt) : String(txt); } catch (_) { return String(txt); }
+  function escJs(v) {
+    try { if (typeof g("escapeJsString") === "function") return g("escapeJsString")(String(v == null ? "" : v)); } catch (_) { }
+    return String(v == null ? "" : v).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+  }
+  function arNum(v) {
+    try { if (typeof g("toArabicDigits") === "function") return g("toArabicDigits")(String(v)); } catch (_) { }
+    return String(v);
   }
   function waCurUser() {
-    try { return String(window.currentServantUsername || "").toLowerCase(); } catch (_) { return ""; }
+    var u = String(g("currentServantUsername") || "").trim().toLowerCase();
+    if (!u) { try { u = String(sessionStorage.getItem("shamamsa-servant-session-username") || "").trim().toLowerCase(); } catch (_) { } }
+    return u;
   }
-  /* اسم الخادم اللي داخل دلوقتي — بيتقري من السيستم نفسه (مش اسم ثابت) */
   function waCurName() {
     var n = "";
-    try { if (typeof window.currentServantName === "function") n = window.currentServantName(); } catch (_) { }
-    n = String(n || "").trim();
-    if (!n || n === "غير معروف" || n === "—") {
-      try { n = String(window.currentServantDisplayName || "").trim(); } catch (_) { }
-    }
-    if (!n) { try { n = String(window.currentServantUsername || "").trim(); } catch (_) { }
-    }
+    try { if (typeof g("currentServantName") === "function") n = String(g("currentServantName")() || "").trim(); } catch (_) { }
+    if (!n || n === "غير معروف") n = String(g("currentServantDisplayName") || "").trim();
+    if (!n) n = String(g("currentServantUsername") || "").trim();
+    if (!n) { try { n = String(sessionStorage.getItem("shamamsa-servant-session-username") || "").trim(); } catch (_) { } }
     return n || "خادم غير معروف";
   }
-  /* اسم اللي بعت فعلاً (من السجل) — لو السجل قديم ومفيهوش اسم، نستخدم اليوزرنيم */
-  function waNameOfSend(s) {
+  function nameOfSend(s) {
     if (!s) return "غير معروف";
     var n = String(s.by || "").trim();
     if (n && n !== "غير معروف") return n;
     var u = String(s.user || "").trim();
     return u || "غير معروف";
   }
+  function waClean(v) {
+    var s = String(v || "");
+    try { if (typeof g("toLatinDigits") === "function") s = g("toLatinDigits")(s); } catch (_) { }
+    var d = s.replace(/[^0-9]/g, "");
+    if (!d) return "";
+    if (d.indexOf("00") === 0) d = d.slice(2);
+    else if (d.charAt(0) === "0") d = "2" + d;
+    else if (d.length === 10 && d.charAt(0) === "1") d = "20" + d;
+    return (d.length >= 8 && d.length <= 15) ? d : "";
+  }
+
+  /* ---------- مخزن الإرسالات ---------- */
+  var waSends = {};
+  var waSendsReady = false;
+
+  function lsSave() {
+    try { localStorage.setItem(WA_LS_KEY, JSON.stringify(waSends)); } catch (_) { }
+  }
+  function lsLoad() {
+    try {
+      var raw = localStorage.getItem(WA_LS_KEY);
+      if (!raw) return;
+      var o = JSON.parse(raw);
+      if (o && typeof o === "object") {
+        Object.keys(o).forEach(function (k) { if (!waSends[k]) waSends[k] = o[k]; });
+      }
+    } catch (_) { }
+  }
 
   function waStartSync() {
+    lsLoad();
     try {
       var db = window._db, ref = window._dbRef, onVal = window._dbOnValue;
       if (!db || !ref || !onVal) return;
       onVal(ref(db, WA_SENDS_PATH), function (snap) {
-        waSends = snap && snap.val ? (snap.val() || {}) : {};
+        var remote = (snap && snap.val) ? (snap.val() || {}) : {};
+        // دمج: الأحدث يفوز (عشان لو الكتابة على السيرفر اتأخرت ما نضيّعش الحالة المحلية)
+        Object.keys(remote).forEach(function (k) {
+          var r = remote[k], l = waSends[k];
+          if (!l || (Number(r && r.at) || 0) >= (Number(l && l.at) || 0)) waSends[k] = r;
+        });
+        lsSave();
         waSendsReady = true;
-        waRepaintOpenModals();
-      }, function (err) { console.warn("[wa-track] تعذر تحميل سجل الإرسال:", err); waSendsReady = true; });
+        waRepaint();
+      }, function (err) {
+        console.warn("[wa-track] تعذر تحميل سجل الإرسال (راجع قواعد Firebase):", err);
+        waSendsReady = true;
+        waRepaint();
+      });
     } catch (e) { console.warn("[wa-track] sync:", e); }
   }
 
   function waMarkSent(recId, recipient) {
     if (!recId || recId === "__form__") return;
-    var now = waNow();
     var prev = waSends[recId] || null;
     var entry = {
-      at: now,
+      at: waNow(),
       by: waCurName(),
       user: waCurUser(),
       phone: recipient ? recipient.phone : "",
@@ -30870,38 +30926,63 @@ html.dark .wa-sent-line{background:rgba(255,255,255,.05)}
       prevAt: prev && prev.at ? prev.at : 0,
       prevBy: prev && prev.by ? prev.by : ""
     };
-    waSends[recId] = entry; // تحديث فوري محلي (بدون انتظار الشبكة)
+    waSends[recId] = entry;
+    lsSave();
     try {
-      window.waitForFirebase().then(function () {
+      var p = (typeof window.waitForFirebase === "function") ? window.waitForFirebase() : Promise.resolve();
+      p.then(function () {
         return window._dbSet(window._dbRef(window._db, WA_SENDS_PATH + "/" + recId), entry);
-      }).catch(function (err) { console.warn("[wa-track] فشل تسجيل الإرسال:", err); });
+      }).catch(function (err) {
+        console.warn("[wa-track] فشل تسجيل الإرسال على Firebase (الحالة محفوظة على الجهاز):", err);
+      });
     } catch (e) { console.warn("[wa-track] write:", e); }
   }
 
-  /* ---------- حساب حالة الزرار ---------- */
-  function waAgoText(ms) {
+  /* ---------- حالة الزرار ---------- */
+  function agoText(ms) {
     if (ms == null || isNaN(ms)) return "";
     var m = Math.floor(ms / 60000);
     if (m < 1) return "دلوقتي";
-    if (m < 60) return "قبل " + waDigits(m) + (m === 1 ? " دقيقة" : " دقيقة");
+    if (m < 60) return "قبل " + arNum(m) + " دقيقة";
     var h = Math.floor(m / 60);
-    if (h < 24) return "قبل " + waDigits(h) + (h === 1 ? " ساعة" : " ساعة");
+    if (h < 24) return "قبل " + arNum(h) + " ساعة";
     var d = Math.floor(h / 24);
-    return "قبل " + waDigits(d) + (d === 1 ? " يوم" : " يوم");
+    return "قبل " + arNum(d) + " يوم";
   }
 
-  /* state: fresh | warm | hot | complete | nophone */
-  function waSendState(r) {
-    if (!r) return { state: "fresh" };
-    var rec = null;
-    try { rec = window.pickCompletionRecipient(r); } catch (_) { }
-    var hasPhone = !!rec;
-    var missing = [];
-    try { missing = window.MISSING_DATA_FIELDS.filter(function (f) { return !String(r[f.key] || "").trim(); }); } catch (_) { }
-    var ordained = false;
-    try { ordained = !!window.isOrdainedRec(r); } catch (_) { }
-    if (!hasPhone) return { state: "nophone", phone: null };
-    if (ordained || !missing.length) return { state: "complete", phone: rec };
+  var STATE_META = {
+    fresh:    { cls: "wa-fresh",    title: "جاهز للإرسال — مفيش إرسال في آخر ٤ أيام" },
+    warm:     { cls: "wa-warm",     title: "اتبعتله من ٢ لـ ٤ أيام" },
+    hot:      { cls: "wa-hot",      title: "اتبعتله في آخر ٤٨ ساعة" },
+    complete: { cls: "wa-complete", title: "بياناته مكتملة" },
+    nophone:  { cls: "wa-nophone",  title: "مفيش رقم مسجل" }
+  };
+
+  function pickRecipient(r) {
+    if (!r) return null;
+    var dk = waClean(r.deaconPhone), mo = waClean(r.motherPhone), fa = waClean(r.fatherPhone);
+    if (dk) return { phone: dk, kind: "deacon", label: "المخدوم" };
+    if (mo) return { phone: mo, kind: "parent", label: "الأم" };
+    if (fa) return { phone: fa, kind: "parent", label: "الأب" };
+    return null;
+  }
+  /* مهم: دالة بناء رابط الواتساب الأصلية بتنادي pickCompletionRecipient،
+     فلازم نستبدلها هي كمان عشان الترتيب (المخدوم ← الأم ← الأب) يبقى واحد في كل حاجة */
+  window.pickCompletionRecipient = pickRecipient;
+
+  function missingOf(r) {
+    if (!r) return [];
+    var def = missingFieldsDef();
+    return def.filter(function (f) { return !String(r[f.key] || "").trim(); });
+  }
+  function isOrdained(r) {
+    try { return !!g("isOrdainedRec")(r); } catch (_) { return !!(r && r.rank && r.rank !== "__none__"); }
+  }
+
+  function sendState(r) {
+    var rec = pickRecipient(r);
+    if (!rec) return { state: "nophone", phone: null };
+    if (isOrdained(r) || !missingOf(r).length) return { state: "complete", phone: rec };
     var s = waSends[r.id];
     if (!s || !s.at) return { state: "fresh", phone: rec };
     var age = Math.max(0, waNow() - Number(s.at));
@@ -30912,303 +30993,229 @@ html.dark .wa-sent-line{background:rgba(255,255,255,.05)}
     };
   }
 
-  var WA_STATE_META = {
-    fresh: { cls: "wa-fresh", title: "🟢 جاهز للإرسال — مفيش إرسال في آخر ٤ أيام", chip: "🟢 مش اتبعتله قريب" },
-    warm: { cls: "wa-warm", title: "🟡 اتبعتله من ٢ لـ ٤ أيام", chip: "🟡 اتبعتله من ٢–٤ أيام" },
-    hot: { cls: "wa-hot", title: "🔴 اتبعتله في آخر ٤٨ ساعة", chip: "🔴 اتبعتله قريب" },
-    complete: { cls: "wa-complete", title: "⭐ بياناته كاملة", chip: "⭐ بيانات كاملة" },
-    nophone: { cls: "wa-nophone", title: "مفيش رقم مسجل", chip: "⚠️ مفيش رقم" }
-  };
-
-  /* ---------- ١) ترتيب الأرقام: المخدوم ← الأم ← الأب ---------- */
-  function waClean(v) {
-    var s = String(v || "");
-    try { if (window.toLatinDigits) s = window.toLatinDigits(s); } catch (_) { }
-    var d = s.replace(/[^0-9]/g, "");
-    if (!d) return "";
-    if (d.indexOf("00") === 0) d = d.slice(2);
-    else if (d.charAt(0) === "0") d = "2" + d;
-    else if (d.length === 10 && d.charAt(0) === "1") d = "20" + d;
-    return (d.length >= 8 && d.length <= 15) ? d : "";
-  }
-  window.pickCompletionRecipient = function (r) {
-    if (!r) return null;
-    var dk = waClean(r.deaconPhone), mo = waClean(r.motherPhone), fa = waClean(r.fatherPhone);
-    if (dk) return { phone: dk, kind: "deacon", label: "المخدوم" };
-    if (mo) return { phone: mo, kind: "parent", label: "الأم" };
-    if (fa) return { phone: fa, kind: "parent", label: "الأب" };
-    return null;
-  };
-
-  /* ---------- ٢) أيقونة الواتساب جنب الاسم ---------- */
+  /* ---------- ١) أيقونة الواتساب جنب الاسم ---------- */
   window.nameWaBtn = function (r) {
     if (!r || !r.id) return "";
-    try { if (window.canContactWhatsapp && !window.canContactWhatsapp()) return ""; } catch (_) { }
-    var st = waSendState(r);
-    var meta = WA_STATE_META[st.state] || WA_STATE_META.fresh;
-    var id = (window.escapeJsString ? window.escapeJsString(r.id) : String(r.id).replace(/'/g, "\'"));
+    var canWa = false;
+    try { canWa = g("canContactWhatsapp")(); } catch (_) { canWa = true; }
+    if (!canWa) return "";
+    if (r.id === "__form__") return "";
+    var st = sendState(r);
+    var meta = STATE_META[st.state] || STATE_META.fresh;
     var title = meta.title;
     if (st.sent && st.age != null) {
-      title = meta.title + " — آخر إرسال: " + waNameOfSend(st.sent) + " " + waAgoText(st.age) +
+      title += " — آخر إرسال: " + nameOfSend(st.sent) + " " + agoText(st.age) +
         (st.sent.kindLabel ? " (على رقم " + st.sent.kindLabel + ")" : "") +
-        (st.sent.count > 1 ? " — اتبعتله " + waDigits(st.sent.count) + " مرة" : "");
+        (st.sent.count > 1 ? " — اتبعتله " + arNum(st.sent.count) + " مرة" : "");
     }
     if (st.state === "complete") {
-      var missingAll = [];
-      try { missingAll = window.MISSING_DATA_FIELDS.filter(function (f) { return !String(r[f.key] || "").trim(); }).map(function (f) { return f.label; }); } catch (_) { }
-      title = ordainedText(r) + (missingAll.length ? "" : "كل البيانات مكتملة");
+      title = isOrdained(r) ? "مرسوم — مش مطلوب منه استكمال بيانات" : "بياناته مكتملة — كل البيانات موجودة";
     }
     var star = st.state === "complete" ? '<span class="wa-star" aria-hidden="true">★</span>' : "";
-    return '<span class="wa-wrap">' +
-      '<button type="button" class="name-wa-btn ' + meta.cls + '" title="' + waEsc(title) + '" aria-label="' + waEsc(title) + '" ' +
-      'onclick="event.stopPropagation();return window.waNameBtnClick(\'' + id + '\',this)">' + WA_SVG + '</button>' + star +
+    return '<span class="wa-wrap" data-dark-contrast="ignore">' +
+      '<button type="button" data-dark-contrast="ignore" class="name-wa-btn ' + meta.cls + '" data-wa-rec="' + esc(r.id) + '" data-wa-state="' + st.state + '" ' +
+      'title="' + esc(title) + '" aria-label="' + esc(title) + '" ' +
+      'onclick="event.stopPropagation();return window.waNameBtnClick(\'' + escJs(r.id) + '\',this)">' + WA_SVG + '</button>' + star +
       '</span>';
   };
-  function ordainedText(r) {
-    try { return window.isOrdainedRec(r) ? "✝️ مرسوم — مش مطلوب منه استكمال بيانات" : "⭐ بياناته مكتملة"; } catch (_) { return "⭐ بياناته مكتملة"; }
-  }
 
-  /* ---------- ٣) دوس على الأيقونة ---------- */
+  /* ---------- ٢) الضغط على الأيقونة ---------- */
   window.waNameBtnClick = function (recordId, el) {
-    var raw = null;
-    try { raw = (window.allRecords || []).find(function (x) { return x.id === recordId; }); } catch (_) { }
-    var r = raw ? (window.liveRecord ? window.liveRecord(raw) : raw) : null;
-    if (!r) { try { window.showAppAlert("تعذر العثور على المخدوم. حدّث الصفحة وحاول تاني.", "error"); } catch (_) { } return false; }
-    if (typeof window.canContactWhatsapp === "function" && !window.canContactWhatsapp()) {
-      try { window.showAppAlert("معندكش صلاحية إرسال رسائل واتساب.", "error"); } catch (_) { }
-      return false;
-    }
-    var st = waSendState(r);
+    var canWa = false;
+    try { canWa = g("canContactWhatsapp")(); } catch (_) { canWa = true; }
+    if (!canWa) { alert2("معندكش صلاحية إرسال رسائل واتساب.", "error"); return false; }
+    var raw = allRecs().filter(function (x) { return x.id === recordId; })[0];
+    var r = raw ? (g("liveRecord") ? g("liveRecord")(raw) : raw) : null;
+    if (!r) { alert2("تعذر العثور على المخدوم. حدّث الصفحة وحاول تاني.", "error"); return false; }
+
+    var st = sendState(r);
     if (st.state === "complete") {
       var extra = "";
       var s = waSends[r.id];
-      if (s && s.at) extra = "
-آخر طلب استكمال اتبعتله: " + waNameOfSend(s) + " " + waAgoText(waNow() - Number(s.at)) + ".";
-      try { window.showAppAlert(ordainedText(r) + extra + "
-مش محتاج نبعتله طلب بيانات.", "success"); } catch (_) { }
+      if (s && s.at) extra = "\nآخر طلب استكمال اتبعتله: " + nameOfSend(s) + " " + agoText(waNow() - Number(s.at)) + ".";
+      alert2((isOrdained(r) ? "المخدوم ده مرسوم — مش مطلوب منه استكمال بيانات." : "بياناته مكتملة — مفيش حاجة ناقصة.") + extra, "success");
       return false;
     }
     if (st.state === "nophone") {
-      try { window.showAppAlert("مفيش أي رقم متسجل (لا رقم المخدوم ولا الأم ولا الأب) — سجّل رقم الأول.", "error"); } catch (_) { }
+      alert2("مفيش أي رقم متسجل (لا رقم المخدوم ولا الأم ولا الأب) — سجّل رقم الأول.", "error");
       return false;
     }
-    var url = window.completionWaUrl(r);
-    if (!url) { try { window.showAppAlert("تعذر تجهيز الرسالة — راجع البيانات وحدّث الصفحة.", "error"); } catch (_) { }
-      return false; }
-    var missing = [];
-    try { missing = window.MISSING_DATA_FIELDS.filter(function (f) { return !String(r[f.key] || "").trim(); }).map(function (f) { return f.label; }); } catch (_) { }
+    var url = "";
+    try { url = g("completionWaUrl")(r); } catch (_) { }
+    if (!url) { alert2("تعذر تجهيز الرسالة — راجع البيانات وحدّث الصفحة.", "error"); return false; }
 
-    /* لو حد من الفريق بعت له في آخر ٢٤ ساعة → تحذير قبل الإرسال */
-    var guard = st.sent && st.age != null && st.age < WA_HOT_MS && !st.sameUser;
-    if (guard) {
-      var msg = "⚠️ تنبيه مهم:
-" +
-        "المخدوم \"" + (r.name || "بدون اسم") + "\" اتبعتله طلب استكمال بيانات قبل كده.
-
-" +
-        "• اللي بعت: " + waNameOfSend(st.sent) + "
-" +
-        "• امتى: " + waAgoText(st.age) + "
-" +
-        "• على رقم: " + (st.sent.kindLabel || "—") + (st.sent.count > 1 ? "
-• مرات الإرسال: " + waDigits(st.sent.count) : "") + "
-
-" +
-        "انت داخل دلوقتي باسم: " + waCurName() + "
-
-" +
+    var missing = missingOf(r).map(function (f) { return f.label; });
+    if (st.sent && st.age != null && st.age < WA_HOT_MS && !st.sameUser) {
+      var msg = "⚠️ تنبيه مهم:\n" +
+        "المخدوم \"" + (r.name || "بدون اسم") + "\" اتبعتله طلب استكمال بيانات قبل كده.\n\n" +
+        "• اللي بعت: " + nameOfSend(st.sent) + "\n" +
+        "• امتى: " + agoText(st.age) + "\n" +
+        "• على رقم: " + (st.sent.kindLabel || "—") +
+        (st.sent.count > 1 ? "\n• مرات الإرسال: " + arNum(st.sent.count) : "") + "\n\n" +
+        "انت داخل دلوقتي باسم: " + waCurName() + "\n\n" +
         "متأكد إنك عايز تبعتله تاني دلوقتي؟";
       try {
-        window.showConfirmModal(msg, function () { waDoSend(r, st.phone, url, missing); });
-      } catch (_) { waDoSend(r, st.phone, url, missing); }
+        g("showConfirmModal")(msg, function () { doSend(r, st.phone, url, missing); });
+      } catch (_) { doSend(r, st.phone, url, missing); }
       return false;
     }
-    waDoSend(r, st.phone, url, missing);
+    doSend(r, st.phone, url, missing);
     return false;
   };
 
-  function waDoSend(r, recipient, url, missing) {
-    if (r && r.id && r.id !== "__form__") waMarkSent(r.id, recipient);
-    // تسجيل في سجل النشاطات (باسم اللي بعت)
-    try {
-      var nm = String(r.name || "").trim() || "مخدوم بدون اسم";
-      var fields = (missing || []).join("، ");
-      var phoneLabel = recipient && recipient.label ? recipient.label : "—";
-      var line = 'المخدوم: "' + nm + '" — فتح رسالة واتساب إلى ' + phoneLabel +
-        " — البيانات المطلوبة: " + fields;
-      window.logActivity("فتح واتساب لاستكمال البيانات", line);
-    } catch (_) { }
-    // فتح واتساب
-    try { window.open(url, "_blank", "noopener"); } catch (_) { try { location.href = url; } catch (_2) { } }
-    waRepaintOpenModals();
+  function alert2(m, t) {
+    try { g("showAppAlert")(m, t || "info"); } catch (_) { try { alert(m); } catch (_2) { } }
   }
 
-  /* ---------- ٤) التوافق مع الكود القديم (روابط wa.me) ---------- */
+  function doSend(r, recipient, url, missing) {
+    if (r && r.id && r.id !== "__form__") waMarkSent(r.id, recipient);
+    try {
+      var nm = String(r.name || "").trim() || "مخدوم بدون اسم";
+      var phoneLabel = recipient && recipient.label ? recipient.label : "—";
+      g("logActivity")("فتح واتساب لاستكمال البيانات",
+        'المخدوم: "' + nm + '" — فتح رسالة واتساب إلى ' + phoneLabel + " — البيانات المطلوبة: " + (missing || []).join("، "));
+    } catch (_) { }
+    try { window.open(url, "_blank", "noopener"); } catch (_) { try { location.href = url; } catch (_2) { } }
+    waRepaint();
+  }
+
+  /* ---------- ٣) التوافق مع روابط wa.me القديمة ---------- */
   window.logCompletionWaLink = function (recordId, link) {
-    if (typeof window.canContactWhatsapp === "function" && !window.canContactWhatsapp()) {
-      try { window.showAppAlert("معندكش صلاحية إرسال رسائل واتساب.", "error"); } catch (_) { }
-      return false;
-    }
-    var raw = null;
-    try { raw = (window.allRecords || []).find(function (x) { return x.id === recordId; }); } catch (_) { }
-    var r = raw ? (window.liveRecord ? window.liveRecord(raw) : raw) : null;
-    var url = r && window.completionWaUrl(r);
-    if (!url) {
-      try { window.showAppAlert("تعذر فتح الرسالة: راجع الرقم والبيانات الناقصة وحدّث الصفحة.", "error"); } catch (_) { }
-      return false;
-    }
-    var recipient = window.pickCompletionRecipient(r);
-    var missing = [];
-    try { missing = window.MISSING_DATA_FIELDS.filter(function (f) { return !String(r[f.key] || "").trim(); }).map(function (f) { return f.label; }); } catch (_) { }
+    var canWa = false;
+    try { canWa = g("canContactWhatsapp")(); } catch (_) { canWa = true; }
+    if (!canWa) { alert2("معندكش صلاحية إرسال رسائل واتساب.", "error"); return false; }
+    var raw = allRecs().filter(function (x) { return x.id === recordId; })[0];
+    var r = raw ? (g("liveRecord") ? g("liveRecord")(raw) : raw) : null;
+    var url = "";
+    try { url = r ? g("completionWaUrl")(r) : ""; } catch (_) { }
+    if (!url) { alert2("تعذر فتح الرسالة: راجع الرقم والبيانات الناقصة وحدّث الصفحة.", "error"); return false; }
     if (link) link.href = url;
-    waDoSend(r, recipient, url, missing);
+    doSend(r, pickRecipient(r), url, missingOf(r).map(function (f) { return f.label; }));
     return false;
   };
 
   window.sendCompletionWa = function (recordId) {
-    if (typeof window.canContactWhatsapp === "function" && !window.canContactWhatsapp()) {
-      try { window.showAppAlert("معندكش صلاحية إرسال رسائل واتساب.", "error"); } catch (_) { }
-      return;
-    }
-    var r, trackId = recordId;
+    var canWa = false;
+    try { canWa = g("canContactWhatsapp")(); } catch (_) { canWa = true; }
+    if (!canWa) { alert2("معندكش صلاحية إرسال رسائل واتساب.", "error"); return; }
+    var r = null;
     if (recordId === "__form__") {
-      r = window.formAsRecord ? window.formAsRecord() : null;
+      r = g("formAsRecord") ? g("formAsRecord")() : null;
       var eid = document.getElementById("edit-id");
-      trackId = eid && eid.value ? eid.value : null;
-      if (r && trackId) r.id = trackId;
+      if (r && eid && eid.value) r.id = eid.value;
     } else {
-      var raw = (window.allRecords || []).find(function (x) { return x.id === recordId; });
-      r = raw ? (window.liveRecord ? window.liveRecord(raw) : raw) : null;
+      var raw = allRecs().filter(function (x) { return x.id === recordId; })[0];
+      r = raw ? (g("liveRecord") ? g("liveRecord")(raw) : raw) : null;
     }
-    if (!r) { try { window.showAppAlert("تعذر العثور على المخدوم. حدّث الصفحة وحاول تاني.", "error"); } catch (_) { } return; }
-    try { if (window.isOrdainedRec(r)) { window.showAppAlert("المخدوم ده مرسوم — مش مطلوب منه استكمال بيانات.", "success"); return; } } catch (_) { }
-    var missingArr = [];
-    try { missingArr = window.MISSING_DATA_FIELDS.filter(function (f) { return !String(r[f.key] || "").trim(); }); } catch (_) { }
-    if (!missingArr.length) { try { window.showAppAlert("بيانات المخدوم ده كاملة — مفيش حاجة ناقصة تتطلب.", "success"); } catch (_) { } return; }
-    var rec = window.pickCompletionRecipient(r);
-    if (!rec) { try { window.showAppAlert("مفيش أي رقم تليفون متسجل للمخدوم ده (لا رقمه ولا رقم الأم ولا الأب) — سجّل رقم الأول وبعدين ابعتله.", "error"); } catch (_) { } return; }
-    var url = window.completionWaUrl(r);
-    var missing = missingArr.map(function (f) { return f.label; });
-    var st = waSendState(r);
+    if (!r) { alert2("تعذر العثور على المخدوم. حدّث الصفحة وحاول تاني.", "error"); return; }
+    if (isOrdained(r)) { alert2("المخدوم ده مرسوم — مش مطلوب منه استكمال بيانات.", "success"); return; }
+    var miss = missingOf(r);
+    if (!miss.length) { alert2("بيانات المخدوم ده كاملة — مفيش حاجة ناقصة تتطلب.", "success"); return; }
+    var rec = pickRecipient(r);
+    if (!rec) { alert2("مفيش أي رقم متسجل للمخدوم ده (لا رقمه ولا رقم الأم ولا رقم الأب) — سجّل رقم الأول.", "error"); return; }
+    var url = "";
+    try { url = g("completionWaUrl")(r); } catch (_) { }
+    var missing = miss.map(function (f) { return f.label; });
+    var st = sendState(r);
     if (st.sent && st.age != null && st.age < WA_HOT_MS && !st.sameUser) {
-      var msg = "⚠️ تنبيه:
-\"" + (r.name || "بدون اسم") + "\" اتبعتله قبل كده.
-
-• اللي بعت: " + waNameOfSend(st.sent) +
-        "
-• امتى: " + waAgoText(st.age) + "
-• على رقم: " + (st.sent.kindLabel || "—") +
-        "
-
-انت داخل باسم: " + waCurName() + "
-
-متأكد إنك عايز تبعتله تاني؟";
-      try { window.showConfirmModal(msg, function () { waDoSend(r, rec, url, missing); }); return; } catch (_) { }
+      var msg = "⚠️ تنبيه:\n\"" + (r.name || "بدون اسم") + "\" اتبعتله قبل كده.\n\n• اللي بعت: " + nameOfSend(st.sent) +
+        "\n• امتى: " + agoText(st.age) + "\n• على رقم: " + (st.sent.kindLabel || "—") +
+        "\n\nانت داخل دلوقتي باسم: " + waCurName() + "\n\nمتأكد؟";
+      try { g("showConfirmModal")(msg, function () { doSend(r, rec, url, missing); }); return; } catch (_) { }
     }
-    waDoSend(r, rec, url, missing);
+    doSend(r, rec, url, missing);
   };
 
-  /* ---------- ٥) كارت نافذة «البيانات الناقصة» ---------- */
+  /* ---------- ٤) كارت نافذة «بيانات ناقصة» ---------- */
   window.missingDataCardHtml = function (r, missing) {
-    var st = waSendState(r);
-    var meta = WA_STATE_META[st.state] || WA_STATE_META.fresh;
-    var deaconClean = window.toLatinDigits ? window.toLatinDigits(r.deaconPhone || "").replace(/[^0-9]/g, "") : "";
-    var motherClean = window.toLatinDigits ? window.toLatinDigits(r.motherPhone || "").replace(/[^0-9]/g, "") : "";
-    var fatherClean = window.toLatinDigits ? window.toLatinDigits(r.fatherPhone || "").replace(/[^0-9]/g, "") : "";
-    var phoneForCall = deaconClean || motherClean || fatherClean;
+    missing = missing || [];
+    var st = sendState(r);
+    var meta = STATE_META[st.state] || STATE_META.fresh;
+    var dk = waClean(r.deaconPhone), mo = waClean(r.motherPhone), fa = waClean(r.fatherPhone);
+    var phoneForCall = dk || mo || fa;
     var canCall = false;
-    try { canCall = window.canContactCall ? window.canContactCall() : true; } catch (_) { }
+    try { canCall = g("canContactCall")(); } catch (_) { canCall = true; }
     var callBtn = !canCall ? "" : (phoneForCall
-      ? '<a class="call-btn" href="tel:' + waEsc(phoneForCall) + '">📞 اتصال</a>'
+      ? '<a class="call-btn" href="tel:' + esc(phoneForCall) + '">📞 اتصال</a>'
       : '<span class="call-btn disabled" title="مفيش رقم تليفون مسجل">📞 اتصال</span>');
 
     var canWa = false;
-    try { canWa = window.canContactWhatsapp ? window.canContactWhatsapp() : false; } catch (_) { }
+    try { canWa = g("canContactWhatsapp")(); } catch (_) { canWa = true; }
     var rec = st.phone;
-    var id = window.escapeJsString ? window.escapeJsString(r.id) : r.id;
+    var idj = escJs(r.id);
     var waBtn;
-    if (!canWa) {
-      waBtn = "";
-    } else if (!rec) {
-      waBtn = '<span class="wa-btn disabled" title="مفيش رقم مسجل">💬 واتساب</span>';
-    } else {
+    if (!canWa) waBtn = "";
+    else if (!rec) waBtn = '<span class="wa-btn disabled" title="مفيش رقم مسجل">💬 واتساب</span>';
+    else {
       var label = rec.kind === "deacon" ? "إرسال للمخدوم" : "إرسال لولي الأمر";
-      var target = " (رقم " + rec.label + ")";
-      waBtn = '<a class="wa-btn wa-state-' + meta.cls + '" data-wa-state="' + st.state + '" href="#" title="' + waEsc(meta.title) + '" ' +
-        'onclick="event.preventDefault();return window.waSendFromCard(\'' + id + '\')">↗️ ' + label + target + ' (واتساب)</a>';
+      var col = (st.state === "warm") ? "#4a2c00" : "#ffffff";
+      waBtn = '<a class="wa-btn ' + meta.cls + '" data-dark-contrast="ignore" style="color:' + col + ' !important" data-wa-rec="' + esc(r.id) + '" data-wa-state="' + st.state + '" href="#" ' +
+        'title="' + esc(meta.title) + '" onclick="event.preventDefault();return window.waSendFromCard(\'' + idj + '\')">↗️ ' +
+        label + ' (رقم ' + rec.label + ') (واتساب)</a>';
     }
 
-    var sentLine = "";
+    var sentLine;
     if (st.sent && st.age != null) {
-      sentLine = '<div class="wa-sent-line' + (st.state === "hot" ? " is-hot" : st.state === "warm" ? " is-warm" : "") + '">' +
-        '<span class="wa-sent-dot"></span>' +
-        'آخر إرسال: <b>' + waEsc(waNameOfSend(st.sent)) + '</b> · ' + waAgoText(st.age) +
-        (st.sent.kindLabel ? ' · على رقم ' + waEsc(st.sent.kindLabel) : '') +
-        (st.sent.count > 1 ? ' · ' + waDigits(st.sent.count) + ' مرة' : '') +
-        '</div>';
+      var cls = st.state === "hot" ? " is-hot" : (st.state === "warm" ? " is-warm" : "");
+      sentLine = '<div class="wa-sent-line' + cls + '" data-dark-contrast="ignore"><span class="wa-sent-dot"></span>' +
+        'آخر إرسال: <b>' + esc(nameOfSend(st.sent)) + '</b> · ' + agoText(st.age) +
+        (st.sent.kindLabel ? ' · على رقم ' + esc(st.sent.kindLabel) : '') +
+        (st.sent.count > 1 ? ' · ' + arNum(st.sent.count) + ' مرة' : '') + '</div>';
     } else {
       sentLine = '<div class="wa-sent-line never"><span class="wa-sent-dot"></span>مفيش طلب استكمال اتبعتله في آخر ٤ أيام</div>';
     }
 
-    return '' +
-      '<div class="gh-year-card wa-card-card" data-wa-state="' + st.state + '">' +
+    var chips = missing.map(function (m) {
+      return '<span class="md-missing-chip ' + m.colorClass + '" role="button" tabindex="0" style="cursor:pointer;" ' +
+        'title="افتح بيانات المخدوم عند ' + esc(m.label) + '" ' +
+        'onclick="window.openRecordAndFocusField(\'' + idj + '\', \'' + escJs(m.fieldId) + '\')">⚠️ ' + esc(m.label) + '</span>';
+    }).join("");
+
+    return '<div class="gh-year-card wa-card-card" data-wa-state="' + st.state + '">' +
       '<div class="gh-year-head">' +
-      '<div class="gh-year-level">👤 ' + waEsc(r.name || "—") + ' ' + window.nameWaBtn(r) + '</div>' +
-      '<div class="gh-year-meta">ناقصه ' + waDigits(missing.length) + ' ' + (missing.length === 1 ? "بيان" : "بيانات") + '</div>' +
+      '<div class="gh-year-level">👤 ' + esc(r.name || "—") + ' ' + window.nameWaBtn(r) + '</div>' +
+      '<div class="gh-year-meta">ناقصه ' + arNum(missing.length) + ' ' + (missing.length === 1 ? "بيان" : "بيانات") + '</div>' +
       '</div>' +
-      '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">' +
-      (missing || []).map(function (m) {
-        return '<span class="md-missing-chip ' + m.colorClass + '" role="button" tabindex="0" style="cursor:pointer;" ' +
-          'title="افتح بيانات المخدوم على طول عند ' + waEsc(m.label) + '" ' +
-          'onclick="window.openRecordAndFocusField(\'' + id + '\', \'' + (window.escapeJsString ? window.escapeJsString(m.fieldId) : m.fieldId) + '\')">⚠️ ' + waEsc(m.label) + '</span>';
-      }).join("") +
-      '</div>' +
+      '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">' + chips + '</div>' +
       sentLine +
       '<div class="gh-year-footer" style="flex-wrap:wrap; gap:8px; margin-top:8px;">' +
       '<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">' + callBtn + waBtn + '</div>' +
-      '<button type="button" class="btn btn-primary btn-sm" onclick="window.openRecordAndFocusField(\'' + id + '\', \'' +
-      (window.escapeJsString ? window.escapeJsString(missing[0].fieldId) : missing[0].fieldId) + '\')">تعديل واستكمال</button>' +
+      '<button type="button" class="btn btn-primary btn-sm" onclick="window.openRecordAndFocusField(\'' + idj + '\', \'' +
+      escJs(missing[0] ? missing[0].fieldId : "f-name") + '\')">تعديل واستكمال</button>' +
       '</div></div>';
   };
 
   window.waSendFromCard = function (recordId) {
-    var raw = null;
-    try { raw = (window.allRecords || []).find(function (x) { return x.id === recordId; }); } catch (_) { }
-    var r = raw ? (window.liveRecord ? window.liveRecord(raw) : raw) : null;
-    if (!r) { try { window.showAppAlert("تعذر العثور على المخدوم.", "error"); } catch (_) { } return false; }
-    if (typeof window.canContactWhatsapp === "function" && !window.canContactWhatsapp()) {
-      try { window.showAppAlert("معندكش صلاحية إرسال رسائل واتساب.", "error"); } catch (_) { }
-      return false;
-    }
-    var rec = window.pickCompletionRecipient(r);
-    var url = window.completionWaUrl(r);
-    if (!rec || !url) { try { window.showAppAlert("مفيش رقم صالح أو مفيش بيانات ناقصة.", "error"); } catch (_) { } return false; }
-    var missing = [];
-    try { missing = window.MISSING_DATA_FIELDS.filter(function (f) { return !String(r[f.key] || "").trim(); }).map(function (f) { return f.label; }); } catch (_) { }
-    var st = waSendState(r);
+    var canWa = false;
+    try { canWa = g("canContactWhatsapp")(); } catch (_) { canWa = true; }
+    if (!canWa) { alert2("معندكش صلاحية إرسال رسائل واتساب.", "error"); return false; }
+    var raw = allRecs().filter(function (x) { return x.id === recordId; })[0];
+    var r = raw ? (g("liveRecord") ? g("liveRecord")(raw) : raw) : null;
+    if (!r) { alert2("تعذر العثور على المخدوم.", "error"); return false; }
+    var st = sendState(r);
+    if (st.state === "nophone") { alert2("مفيش رقم مسجل للمخدوم ده.", "error"); return false; }
+    if (st.state === "complete") { alert2("بياناته مكتملة — مفيش حاجة ناقصة.", "success"); return false; }
+    var rec = pickRecipient(r), url = "";
+    try { url = g("completionWaUrl")(r); } catch (_) { }
+    if (!rec || !url) { alert2("مفيش رقم صالح أو مفيش بيانات ناقصة.", "error"); return false; }
+    var missing = missingOf(r).map(function (f) { return f.label; });
     if (st.sent && st.age != null && st.age < WA_HOT_MS && !st.sameUser) {
-      var msg = "⚠️ تنبيه:
-\"" + (r.name || "بدون اسم") + "\" اتبعتله قبل كده.
-
-• اللي بعت: " + waNameOfSend(st.sent) +
-        "
-• امتى: " + waAgoText(st.age) + "
-• على رقم: " + (st.sent.kindLabel || "—") + "
-
-متأكد؟";
-      try { window.showConfirmModal(msg, function () { waDoSend(r, rec, url, missing); }); return false; } catch (_) { }
+      var msg = "⚠️ تنبيه:\n\"" + (r.name || "بدون اسم") + "\" اتبعتله قبل كده.\n\n• اللي بعت: " + nameOfSend(st.sent) +
+        "\n• امتى: " + agoText(st.age) + "\n• على رقم: " + (st.sent.kindLabel || "—") +
+        "\n\nانت داخل دلوقتي باسم: " + waCurName() + "\n\nمتأكد؟";
+      try { g("showConfirmModal")(msg, function () { doSend(r, rec, url, missing); }); return false; } catch (_) { }
     }
-    waDoSend(r, rec, url, missing);
+    doSend(r, rec, url, missing);
     return false;
   };
 
-  /* ---------- ٦) شريط الفلتر + إعادة رسم نافذة البيانات الناقصة ---------- */
+  /* ---------- ٥) نافذة البيانات الناقصة + الفلاتر ---------- */
   var waFilter = "all";
   window.waSetMissingFilter = function (k) { waFilter = k; try { window.renderMissingDataList(); } catch (_) { } };
 
-  function waEnsureFilterBar() {
+  function ensureFilterBar() {
     var list = document.getElementById("missing-data-modal-list");
-    if (!list) return null;
+    if (!list || !list.parentNode) return null;
     var bar = document.getElementById("wa-state-filter-bar");
     if (!bar) {
       bar = document.createElement("div");
@@ -31222,18 +31229,20 @@ html.dark .wa-sent-line{background:rgba(255,255,255,.05)}
   window.renderMissingDataList = function () {
     var searchEl = document.getElementById("missing-data-search");
     var search = (searchEl && searchEl.value || "").trim();
-    var items = window.computeMissingDataList ? window.computeMissingDataList() : [];
+    var items = [];
+    try { items = g("computeMissingDataList")() || []; } catch (_) { items = []; }
     if (search) {
-      var nm = window.normalizeArabic || function (s) { return String(s || ""); };
-      items = items.filter(function (x) { return nm(x.r.name || "").indexOf(nm(search)) !== -1; });
+      var norm = g("normalizeArabic");
+      items = items.filter(function (x) {
+        var a = (typeof norm === "function") ? norm(x.r.name || "") : String(x.r.name || "");
+        var b = (typeof norm === "function") ? norm(search) : search;
+        return a.indexOf(b) !== -1;
+      });
     }
     var counts = { all: items.length, hot: 0, warm: 0, fresh: 0, nophone: 0 };
-    items.forEach(function (x) {
-      var s = waSendState(x.r).state;
-      if (counts[s] != null) counts[s]++;
-    });
-    // المخدومين المكتملين (للنجمة) — مش بيظهروا هنا بس بنعدهم للشريط
-    var bar = waEnsureFilterBar();
+    items.forEach(function (x) { var s = sendState(x.r).state; if (counts[s] != null) counts[s]++; });
+
+    var bar = ensureFilterBar();
     if (bar) {
       var defs = [
         { k: "all", t: "الكل", c: counts.all },
@@ -31243,76 +31252,108 @@ html.dark .wa-sent-line{background:rgba(255,255,255,.05)}
         { k: "nophone", t: "⚠️ بدون رقم", c: counts.nophone }
       ];
       bar.innerHTML = defs.map(function (d) {
-        return '<button type="button" class="wa-filter-btn' + (waFilter === d.k ? " active" : "") + '" data-wa-filter="' + d.k + '" ' +
-          'onclick="window.waSetMissingFilter(\'' + d.k + '\')">' + d.t + ' <b>' + waDigits(d.c) + '</b></button>';
+        return '<button type="button" class="wa-filter-btn' + (waFilter === d.k ? " active" : "") + '" ' +
+          'onclick="window.waSetMissingFilter(\'' + d.k + '\')">' + d.t + ' <b>' + arNum(d.c) + '</b></button>';
       }).join("");
     }
-    if (waFilter !== "all") {
-      items = items.filter(function (x) { return waSendState(x.r).state === waFilter; });
-    }
+    if (waFilter !== "all") items = items.filter(function (x) { return sendState(x.r).state === waFilter; });
+
     var listEl = document.getElementById("missing-data-modal-list");
     var pill = document.getElementById("missing-data-count-pill");
-    if (pill) pill.textContent = waDigits(items.length) + " مخدوم";
+    if (pill) pill.textContent = arNum(items.length) + " مخدوم";
     if (!listEl) return;
     if (!items.length) {
-      listEl.innerHTML = '<div class="gh-empty">🎉 مفيش أي مخدوم مطابق' + (search ? " للبحث" : waFilter !== "all" ? " للفلتر ده" : " ناقصه بيانات") + '!</div>';
+      listEl.innerHTML = '<div class="gh-empty">🎉 مفيش أي مخدوم مطابق' +
+        (search ? " للبحث" : (waFilter !== "all" ? " للفلتر ده" : " ناقصه بيانات")) + '!</div>';
       return;
     }
     listEl.innerHTML = items.map(function (x) { return window.missingDataCardHtml(x.r, x.missing); }).join("");
   };
 
-  function waRepaintOpenModals() {
-    try {
-      var ov = document.getElementById("missing-data-modal-overlay");
-      if (ov && ov.style.display && ov.style.display !== "none") window.renderMissingDataList();
-    } catch (_) { }
-    try { waUpdateFormBtn(); } catch (_) { }
+  /* ---------- ٦) تحديث فوري بعد الإرسال ---------- */
+  function paintButton(btn, r) {
+    var st = sendState(r);
+    var meta = STATE_META[st.state] || STATE_META.fresh;
+    btn.classList.remove("wa-fresh", "wa-hot", "wa-warm", "wa-complete", "wa-nophone");
+    btn.classList.add(meta.cls);
+    btn.setAttribute("data-wa-state", st.state);
+    var t = meta.title;
+    if (st.sent && st.age != null) t += " — آخر إرسال: " + nameOfSend(st.sent) + " " + agoText(st.age);
+    btn.title = t; btn.setAttribute("aria-label", t);
   }
 
-  /* ---------- ٦.٥) أيقونة الواتساب اللي جنب «الاسم بالكامل» في الفورمة ---------- */
-  function waUpdateFormBtn() {
+  function waRepaint() {
+    try {
+      allRecs().forEach(function (r) {
+        if (!r || !r.id) return;
+        var sel = '.name-wa-btn[data-wa-rec="' + String(r.id).replace(/"/g, '\\"') + '"]';
+        var nodes = document.querySelectorAll(sel);
+        for (var i = 0; i < nodes.length; i++) paintButton(nodes[i], r);
+      });
+    } catch (e) { }
+    try {
+      var ov = document.getElementById("missing-data-modal-overlay");
+      if (ov) {
+        var disp = (window.getComputedStyle ? getComputedStyle(ov).display : ov.style.display);
+        if (disp && disp !== "none") window.renderMissingDataList();
+      }
+    } catch (_) { }
+    try { updateFormBtn(); } catch (_) { }
+  }
+
+  /* ---------- ٧) أيقونة الفورمة ---------- */
+  function updateFormBtn() {
     var btn = document.getElementById("form-name-wa-btn");
     if (!btn) return;
-    ["wa-fresh", "wa-hot", "wa-warm", "wa-complete", "wa-nophone"].forEach(function (c) { btn.classList.remove(c); });
     var eid = document.getElementById("edit-id");
     var id = eid && eid.value ? eid.value : "";
-    var r = id ? (window.allRecords || []).filter(function (x) { return x.id === id; })[0] : null;
-    if (!r) { btn.classList.add("wa-fresh"); btn.title = "ابعت طلب استكمال البيانات على واتساب (من أرقام الفورمة)"; return; }
-    var cur = window.liveRecord ? window.liveRecord(r) : r;
-    var st = waSendState(cur);
-    var meta = WA_STATE_META[st.state] || WA_STATE_META.fresh;
-    btn.classList.add(meta.cls);
-    var t = "ابعت طلب استكمال البيانات على واتساب — " + meta.title;
-    if (st.sent && st.age != null) t += " — آخر إرسال: " + waNameOfSend(st.sent) + " " + waAgoText(st.age);
-    btn.title = t;
-    btn.setAttribute("aria-label", t);
+    var r = id ? allRecs().filter(function (x) { return x.id === id; })[0] : null;
+    if (!r) return;
+    var cur = g("liveRecord") ? g("liveRecord")(r) : r;
+    paintButton(btn, cur);
   }
   try {
-    var _origEditRecord = window.editRecord;
-    if (typeof _origEditRecord === "function") {
+    var _origEdit = window.editRecord;
+    if (typeof _origEdit === "function") {
       window.editRecord = function () {
-        var res = _origEditRecord.apply(this, arguments);
-        setTimeout(function () { try { waUpdateFormBtn(); } catch (_) { } }, 200);
+        var res = _origEdit.apply(this, arguments);
+        setTimeout(function () { try { updateFormBtn(); } catch (_) { } }, 250);
         return res;
       };
     }
   } catch (_) { }
-  setTimeout(function () { try { waUpdateFormBtn(); } catch (_) { } }, 1500);
 
-  /* ---------- ٨) أدوات للفحص/التصحيح ---------- */
-  window.waTrackState = waSendState;
+  /* ---------- ٨) أدوات للاختبار ---------- */
+  window.waTrackState = sendState;
   window.waTrackSends = function () { return waSends; };
-  window.waTrackInject = function (id, entry) { waSends[id] = entry; };
+  window.waTrackInject = function (id, entry) { waSends[id] = entry; lsSave(); waRepaint(); };
+  window.waTrackRepaint = waRepaint;
+  window.waTrackPick = pickRecipient;
+  window.waTrackVersion = "1.1";
+  window.waTrackDiag = function () {
+    var out = {
+      version: "1.1",
+      firebase: !!window._db,
+      sendsCount: Object.keys(waSends).length,
+      sendsReady: waSendsReady,
+      user: waCurUser(), userLabel: waCurName(),
+      records: allRecs().length,
+      path: WA_SENDS_PATH,
+      sends: waSends
+    };
+    try { console.log("[wa-track] تشخيص:", out); } catch (_) { }
+    return out;
+  };
 
-  /* ---------- ٧) تشغيل ---------- */
-  function boot() {
-    waStartSync();
-  }
+  lsLoad();
+
+  /* ---------- ٩) تشغيل ---------- */
+  function boot() { lsLoad(); waStartSync(); }
   if (window._firebaseReady) boot();
   else window.addEventListener("firebase-ready", boot, { once: true });
   setTimeout(function () { if (!waSendsReady) boot(); }, 2500);
 })();
 
 </script>
-<!-- ===== نهاية الإضافة ===== -->
+<!-- ===== WA-TRACK-V1 END ===== -->
 </body> </html>
