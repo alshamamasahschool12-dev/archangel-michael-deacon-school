@@ -31012,40 +31012,67 @@ html.dark .wa-sent-line{background:rgba(255,255,255,.05)}
       title = isOrdained(r) ? "مرسوم — مش مطلوب منه استكمال بيانات" : "بياناته مكتملة — كل البيانات موجودة";
     }
     var star = st.state === "complete" ? '<span class="wa-star" aria-hidden="true">★</span>' : "";
-    return '<span class="wa-wrap" data-dark-contrast="ignore">' +
-      '<button type="button" data-dark-contrast="ignore" class="name-wa-btn ' + meta.cls + '" data-wa-rec="' + esc(r.id) + '" data-wa-state="' + st.state + '" ' +
-      'title="' + esc(title) + '" aria-label="' + esc(title) + '" ' +
-      'onclick="event.stopPropagation();return window.waNameBtnClick(\'' + escJs(r.id) + '\',this)">' + WA_SVG + '</button>' + star +
-      '</span>';
+    // رابط حقيقي (مش window.open) — المتصفح بيفتحه لوحده ومفيش مانع بوب-أب
+    var url = "";
+    if (st.state === "fresh" || st.state === "warm" || st.state === "hot") {
+      try { url = g("completionWaUrl")(r) || ""; } catch (_) { url = ""; }
+    }
+    var common = ' data-wa-rec="' + esc(r.id) + '" data-wa-state="' + st.state + '" data-dark-contrast="ignore" ' +
+      'title="' + esc(title) + '" aria-label="' + esc(title) + '"';
+    var inner = WA_SVG;
+    var btn;
+    if (url) {
+      btn = '<a class="name-wa-btn ' + meta.cls + '" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer"' + common +
+        ' onclick="return window.waIconClick(event,\'' + escJs(r.id) + '\')">' + inner + '</a>';
+    } else {
+      btn = '<button type="button" class="name-wa-btn ' + meta.cls + '"' + common +
+        ' onclick="event.stopPropagation();event.preventDefault();return window.waIconClick(event,\'' + escJs(r.id) + '\')">' + inner + '</button>';
+    }
+    return '<span class="wa-wrap" data-dark-contrast="ignore">' + btn + star + '</span>';
   };
 
-  /* ---------- ٢) الضغط على الأيقونة ---------- */
-  window.waNameBtnClick = function (recordId, el) {
+  /* ---------- ٢) الضغط على الأيقونة ----------
+     القاعدة: لو مسموح نبعت → ما نمنعش الافتراضي (المتصفح يفتح واتساب بنفسه)
+     ونسجّل الإرسال. لو محتاج تحذير → نمنع ونعرض التأكيد. */
+  window.waIconClick = function (event, recordId) {
+    var r = findRecord(recordId);
+    if (!r) { if (event) event.preventDefault(); alert2("تعذر العثور على المخدوم. حدّث الصفحة وحاول تاني.", "error"); return false; }
+    return handleSendClick(event, r, "icon");
+  };
+
+  function findRecord(id) {
+    var raw = allRecs().filter(function (x) { return x.id === id; })[0];
+    if (!raw) return null;
+    try { return g("liveRecord") ? g("liveRecord")(raw) : raw; } catch (_) { return raw; }
+  }
+
+  function handleSendClick(event, r, source) {
     var canWa = false;
     try { canWa = g("canContactWhatsapp")(); } catch (_) { canWa = true; }
-    if (!canWa) { alert2("معندكش صلاحية إرسال رسائل واتساب.", "error"); return false; }
-    var raw = allRecs().filter(function (x) { return x.id === recordId; })[0];
-    var r = raw ? (g("liveRecord") ? g("liveRecord")(raw) : raw) : null;
-    if (!r) { alert2("تعذر العثور على المخدوم. حدّث الصفحة وحاول تاني.", "error"); return false; }
+    if (!canWa) { if (event) event.preventDefault(); alert2("معندكش صلاحية إرسال رسائل واتساب.", "error"); return false; }
 
     var st = sendState(r);
     if (st.state === "complete") {
+      if (event) event.preventDefault();
       var extra = "";
-      var s = waSends[r.id];
-      if (s && s.at) extra = "\nآخر طلب استكمال اتبعتله: " + nameOfSend(s) + " " + agoText(waNow() - Number(s.at)) + ".";
+      var s0 = waSends[r.id];
+      if (s0 && s0.at) extra = "\nآخر طلب استكمال اتبعتله: " + nameOfSend(s0) + " " + agoText(waNow() - Number(s0.at)) + ".";
       alert2((isOrdained(r) ? "المخدوم ده مرسوم — مش مطلوب منه استكمال بيانات." : "بياناته مكتملة — مفيش حاجة ناقصة.") + extra, "success");
       return false;
     }
     if (st.state === "nophone") {
+      if (event) event.preventDefault();
       alert2("مفيش أي رقم متسجل (لا رقم المخدوم ولا الأم ولا الأب) — سجّل رقم الأول.", "error");
       return false;
     }
     var url = "";
-    try { url = g("completionWaUrl")(r); } catch (_) { }
-    if (!url) { alert2("تعذر تجهيز الرسالة — راجع البيانات وحدّث الصفحة.", "error"); return false; }
-
+    try { url = g("completionWaUrl")(r) || ""; } catch (_) { url = ""; }
+    if (!url) { if (event) event.preventDefault(); alert2("تعذر تجهيز الرسالة — راجع البيانات وحدّث الصفحة.", "error"); return false; }
     var missing = missingOf(r).map(function (f) { return f.label; });
+
+    /* حد تاني بعت في آخر ٤٨ ساعة → تحذير قبل الإرسال */
     if (st.sent && st.age != null && st.age < WA_HOT_MS && !st.sameUser) {
+      if (event) event.preventDefault();
       var msg = "⚠️ تنبيه مهم:\n" +
         "المخدوم \"" + (r.name || "بدون اسم") + "\" اتبعتله طلب استكمال بيانات قبل كده.\n\n" +
         "• اللي بعت: " + nameOfSend(st.sent) + "\n" +
@@ -31055,29 +31082,95 @@ html.dark .wa-sent-line{background:rgba(255,255,255,.05)}
         "انت داخل دلوقتي باسم: " + waCurName() + "\n\n" +
         "متأكد إنك عايز تبعتله تاني دلوقتي؟";
       try {
-        g("showConfirmModal")(msg, function () { doSend(r, st.phone, url, missing); });
-      } catch (_) { doSend(r, st.phone, url, missing); }
+        g("showConfirmModal")(msg, function () { openUrl(url); doSend(r, st.phone, url, missing); });
+      } catch (_) { openUrl(url); doSend(r, st.phone, url, missing); }
       return false;
     }
+
+    /* المسار الطبيعي: لو العنصر رابط حقيقي، المتصفح يفتحه بنفسه (أضمن طريقة) */
+    if (event && event.currentTarget && event.currentTarget.tagName === "A") {
+      doSend(r, st.phone, url, missing, true);
+      return true;    // ← نسمح للمتصفح يفتح واتساب — مفيش بوب-أب بلوكر
+    }
+    if (event) event.preventDefault();
+    openUrl(url);
     doSend(r, st.phone, url, missing);
     return false;
-  };
+  }
 
   function alert2(m, t) {
     try { g("showAppAlert")(m, t || "info"); } catch (_) { try { alert(m); } catch (_2) { } }
   }
 
-  function doSend(r, recipient, url, missing) {
-    if (r && r.id && r.id !== "__form__") waMarkSent(r.id, recipient);
+  /* فتح الرابط: أفضل طريقة هي رابط حقيقي + click (زي ما السيستم نفسه بيعمل) */
+  function openUrl(url) {
+    try {
+      var a = document.createElement("a");
+      a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer";
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () { try { a.remove(); } catch (_) { } }, 400);
+      return true;
+    } catch (e) {
+      try { window.open(url, "_blank"); return true; } catch (_2) { }
+      try { location.href = url; return true; } catch (_3) { }
+      return false;
+    }
+  }
+
+  var _lastPrev = {};
+
+  function doSend(r, recipient, url, missing, allowDefault) {
+    if (!r || !r.id || r.id === "__form__") return;
+    _lastPrev[r.id] = waSends[r.id] ? JSON.parse(JSON.stringify(waSends[r.id])) : null;
+    waMarkSent(r.id, recipient);
     try {
       var nm = String(r.name || "").trim() || "مخدوم بدون اسم";
       var phoneLabel = recipient && recipient.label ? recipient.label : "—";
       g("logActivity")("فتح واتساب لاستكمال البيانات",
         'المخدوم: "' + nm + '" — فتح رسالة واتساب إلى ' + phoneLabel + " — البيانات المطلوبة: " + (missing || []).join("، "));
     } catch (_) { }
-    try { window.open(url, "_blank", "noopener"); } catch (_) { try { location.href = url; } catch (_2) { } }
-    waRepaint();
+    // تحديث الواجهة بعد ما المتصفح يفتح الرابط (مش قبل، عشان ما نلغيش الفتح)
+    setTimeout(function () { try { waRepaint(); } catch (_) { } }, 350);
+    // توست فيه تراجع — لو واتساب ما فتحش
+    var rid = r.id, prev = _lastPrev[rid];
+    try {
+      var label = recipient && recipient.label ? recipient.label : "";
+      window.showToast(
+        "اتسجّل إنك بعت لـ " + (String(r.name || "").trim() || "المخدوم") + (label ? " على رقم " + label : "") +
+        "\nلو واتساب ما فتحش، اضغط تراجع.",
+        "success",
+        {
+          icon: "💬", title: "تم تسجيل الإرسال", key: "wa-send-" + rid, undoLabel: "↩️ تراجع (مفتحش)",
+          undo: function () { return waUndo(rid, prev); },
+          undoneMessage: "تم التراجع — الزرار رجع لحالته"
+        }
+      );
+    } catch (_) {
+      try { alert2("اتسجّل الإرسال.", "success"); } catch (_2) { }
+    }
   }
+
+  function waUndo(recId, prev) {
+    return new Promise(function (resolve) {
+      if (prev) waSends[recId] = prev; else delete waSends[recId];
+      lsSave();
+      try {
+        var p = (typeof window.waitForFirebase === "function") ? window.waitForFirebase() : Promise.resolve();
+        p.then(function () {
+          var ref = window._dbRef(window._db, WA_SENDS_PATH + "/" + recId);
+          return prev ? window._dbSet(ref, prev) : window._dbRemove(ref);
+        }).catch(function (e) { console.warn("[wa-track] تراجع: فشل تحديث Firebase", e); });
+      } catch (_) { }
+      waRepaint();
+      resolve();
+    });
+  }
+  window.waUndoSend = function (recId) {
+    var prev = _lastPrev[recId] || null;
+    return waUndo(recId, prev);
+  };
 
   /* ---------- ٣) التوافق مع روابط wa.me القديمة ---------- */
   window.logCompletionWaLink = function (recordId, link) {
@@ -31090,6 +31183,7 @@ html.dark .wa-sent-line{background:rgba(255,255,255,.05)}
     try { url = r ? g("completionWaUrl")(r) : ""; } catch (_) { }
     if (!url) { alert2("تعذر فتح الرسالة: راجع الرقم والبيانات الناقصة وحدّث الصفحة.", "error"); return false; }
     if (link) link.href = url;
+    openUrl(url);
     doSend(r, pickRecipient(r), url, missingOf(r).map(function (f) { return f.label; }));
     return false;
   };
@@ -31121,8 +31215,9 @@ html.dark .wa-sent-line{background:rgba(255,255,255,.05)}
       var msg = "⚠️ تنبيه:\n\"" + (r.name || "بدون اسم") + "\" اتبعتله قبل كده.\n\n• اللي بعت: " + nameOfSend(st.sent) +
         "\n• امتى: " + agoText(st.age) + "\n• على رقم: " + (st.sent.kindLabel || "—") +
         "\n\nانت داخل دلوقتي باسم: " + waCurName() + "\n\nمتأكد؟";
-      try { g("showConfirmModal")(msg, function () { doSend(r, rec, url, missing); }); return; } catch (_) { }
+      try { g("showConfirmModal")(msg, function () { openUrl(url); doSend(r, rec, url, missing); }); return; } catch (_) { }
     }
+    openUrl(url);
     doSend(r, rec, url, missing);
   };
 
@@ -31149,8 +31244,12 @@ html.dark .wa-sent-line{background:rgba(255,255,255,.05)}
     else {
       var label = rec.kind === "deacon" ? "إرسال للمخدوم" : "إرسال لولي الأمر";
       var col = (st.state === "warm") ? "#4a2c00" : "#ffffff";
-      waBtn = '<a class="wa-btn ' + meta.cls + '" data-dark-contrast="ignore" style="color:' + col + ' !important" data-wa-rec="' + esc(r.id) + '" data-wa-state="' + st.state + '" href="#" ' +
-        'title="' + esc(meta.title) + '" onclick="event.preventDefault();return window.waSendFromCard(\'' + idj + '\')">↗️ ' +
+      var cardUrl = "";
+      try { cardUrl = g("completionWaUrl")(r) || ""; } catch (_) { cardUrl = ""; }
+      waBtn = '<a class="wa-btn ' + meta.cls + '" data-dark-contrast="ignore" style="color:' + col + ' !important" ' +
+        'data-wa-rec="' + esc(r.id) + '" data-wa-state="' + st.state + '" ' +
+        (cardUrl ? 'href="' + esc(cardUrl) + '" target="_blank" rel="noopener noreferrer"' : 'href="#"') + ' ' +
+        'title="' + esc(meta.title) + '" onclick="return window.waCardClick(event,\'' + idj + '\')">↗️ ' +
         label + ' (رقم ' + rec.label + ') (واتساب)</a>';
     }
 
@@ -31185,6 +31284,12 @@ html.dark .wa-sent-line{background:rgba(255,255,255,.05)}
       '</div></div>';
   };
 
+  window.waCardClick = function (event, recordId) {
+    var r = findRecord(recordId);
+    if (!r) { if (event) event.preventDefault(); alert2("تعذر العثور على المخدوم.", "error"); return false; }
+    return handleSendClick(event, r, "card");
+  };
+
   window.waSendFromCard = function (recordId) {
     var canWa = false;
     try { canWa = g("canContactWhatsapp")(); } catch (_) { canWa = true; }
@@ -31203,8 +31308,9 @@ html.dark .wa-sent-line{background:rgba(255,255,255,.05)}
       var msg = "⚠️ تنبيه:\n\"" + (r.name || "بدون اسم") + "\" اتبعتله قبل كده.\n\n• اللي بعت: " + nameOfSend(st.sent) +
         "\n• امتى: " + agoText(st.age) + "\n• على رقم: " + (st.sent.kindLabel || "—") +
         "\n\nانت داخل دلوقتي باسم: " + waCurName() + "\n\nمتأكد؟";
-      try { g("showConfirmModal")(msg, function () { doSend(r, rec, url, missing); }); return false; } catch (_) { }
+      try { g("showConfirmModal")(msg, function () { openUrl(url); doSend(r, rec, url, missing); }); return false; } catch (_) { }
     }
+    openUrl(url);
     doSend(r, rec, url, missing);
     return false;
   };
