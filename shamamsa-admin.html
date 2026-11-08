@@ -3157,13 +3157,20 @@ body.cx-has-session .cx-drawer-account{display:block}
 .cx-release-item.wide{grid-column:1/-1}.cx-release-item span{display:block;color:var(--text-sub,#6b5a42);font-size:.68rem;font-weight:700;margin-bottom:3px}.cx-release-item b{display:block;color:var(--text-main,#2c1b10);font-size:.82rem;font-weight:900;overflow-wrap:anywhere}.cx-release-item b.ltr{direction:ltr;text-align:right;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
 .cx-release-note{margin:12px 1px 0;color:var(--text-sub,#6b5a42);font-size:.73rem;font-weight:650;line-height:1.8;text-align:center}
 .cx-release-actions{display:flex;gap:8px;margin-top:14px}.cx-release-copy,.cx-release-done{flex:1;min-height:42px;border-radius:13px;font:800 .8rem var(--app-font,'Tajawal',sans-serif);cursor:pointer}.cx-release-copy{border:1px solid var(--card-border,#e7d8c2);background:var(--gold-soft,rgba(185,137,42,.1));color:var(--text-main,#2c1b10)}.cx-release-done{border:0;background:linear-gradient(90deg,var(--brand,#a3186b),var(--brand-2,#c026a3));color:#fff}
+#cxNav .cx-priest-action{display:none}
 @media(min-width:1401px){
   #cxNav .cx-nav-inner{width:min(1540px,calc(100% - 28px))}
+  #cxNav .cx-links>.cx-priest-entry{display:none}
+  #cxNav .cx-links a{padding-inline:9px}
+  #cxNav .cx-priest-action{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:0 11px;border:1px solid var(--cx-line);border-radius:12px;background:var(--cx-paper);color:var(--cx-muted);text-decoration:none;font:800 .74rem var(--cx-font);white-space:nowrap;transition:color .18s,border-color .18s,background .18s}
+  #cxNav .cx-priest-action:hover{color:var(--cx-brand);border-color:var(--cx-gold);background:var(--cx-gold-soft)}
+  #cxNav .cx-nav-inner:has(#cxLogout:not([hidden])) #cxBack{display:none}
 }
 @media(min-width:1401px) and (max-width:1750px){
   body.cx-has-session #cxNav .cx-clock{display:none}
 }
 @media(max-width:1400px){
+  #cxNav #cxLogout{display:none!important}
   body.cx-has-session #cxNav .cx-clock{display:none}
   html{scroll-padding-top:calc(var(--cx-offset-nav-h,var(--cx-nav-h,120px)) + 18px)}
 }
@@ -3195,8 +3202,27 @@ body.cx-has-session .cx-drawer-account{display:block}
 @media print{.cx-session-account,.cx-release-trigger,.cx-session-mobile,.cx-drawer-account,.cx-drawer-version,.cx-release-overlay{display:none!important}}
 @media(prefers-reduced-motion:reduce){.cx-session-account,.cx-release-trigger,.cx-release-dialog{animation:none!important;transition:none!important}}
 </style>
-<script id="shamamsa-release-meta" type="application/json">{"app":"مدرسة الملاك ميخائيل للشمامسة","file":"shamamsa-admin.html","version":"1.0.4","build":5,"updatedAt":"2026-11-08T16:17+02:00","sourceHash":"ad3726c61a19c99279579048231e78495831cc39c0a82eb25b1d5f1ed6eb5760"}</script>
-<meta name="application-version" content="1.0.4">
+<script id="shamamsa-release-meta" type="application/json">{"app":"مدرسة الملاك ميخائيل للشمامسة","file":"shamamsa-admin.html","version":"1.0.6","build":7,"updatedAt":"2026-11-08T20:21+02:00","sourceHash":"421435364de592b48e6c500eb43c5b16f9d69b7572f956017bc73fb2169c6364"}</script>
+<script id="shamamsa-release-cache-guard">
+/* منع تشغيل نسخة JS قديمة من الـCache بعد نشر إصدار جديد */
+(function(){
+  var version='';try{version=JSON.parse(document.getElementById('shamamsa-release-meta').textContent).version||''}catch(_){}
+  window.__SHAMAMSA_RELEASE_VERSION__=version||'dev';
+  if(!version||location.protocol.indexOf('http')!==0)return;
+  try{
+    var resetKey='shamamsa-release-cache-reset',reloadKey='shamamsa-release-reloading';
+    if(localStorage.getItem(resetKey)===version)return;
+    localStorage.setItem(resetKey,version);
+    if(sessionStorage.getItem(reloadKey)===version)return;
+    sessionStorage.setItem(reloadKey,version);
+    var jobs=[];
+    if('serviceWorker' in navigator)jobs.push(navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.unregister().catch(function(){return false})}))}).catch(function(){}));
+    if('caches' in window)jobs.push(caches.keys().then(function(keys){return Promise.all(keys.map(function(k){return caches.delete(k)}))}).catch(function(){}));
+    Promise.all(jobs).then(function(){setTimeout(function(){location.reload()},40)},function(){setTimeout(function(){location.reload()},40)});
+  }catch(_){}
+})();
+</script>
+<meta name="application-version" content="1.0.6">
 <!-- RELEASE AUTOMATION: bump_shamamsa_version.py يحدّث رقم الإصدار والـBuild والتاريخ والبصمة تلقائيًا عند أي تغيير في محتوى الملف. -->
 </head> <body>
 <div class="cx-progress" aria-hidden="true"><i></i></div>
@@ -3222,6 +3248,7 @@ body.cx-has-session .cx-drawer-account{display:block}
 </button>
 <button type="button" class="cx-release-trigger" data-open-release aria-haspopup="dialog" aria-label="عرض تفاصيل إصدار النظام" title="إصدار النظام — اضغط للتفاصيل"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8h4l3 3v9H5V4h7v4Z"/><path d="M12 4v4h4M8 15h8M8 12h3"/></svg><span class="cx-release-label">الإصدار</span><b class="cx-release-number" data-version-text>v1.0.0</b></button>
 
+<a class="cx-priest-action" href="father-control.html" aria-label="دخول الأب الكاهن" title="دخول الأب الكاهن"><span aria-hidden="true">✝</span><span>الأب الكاهن</span></a>
 <button aria-label="تسجيل الخروج" class="cx-icon cx-logout" hidden="" id="cxLogout" onclick="cxConfirmLogout()" title="تسجيل الخروج من الإدارة" type="button"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"></path><path d="M10 17l-5-5 5-5"></path><path d="M5 12h11"></path></svg><span>خروج</span></button>
 <span class="cx-clock" title="توقيت القاهرة"><i></i><b data-cx-clock="">--:--</b><span>القاهرة</span></span>
 <button type="button" id="pwa-inst-btn" class="pwa-inst-btn" aria-label="تثبيت التطبيق على الجهاز" title="ثبّت التطبيق على الموبايل أو الكمبيوتر" style="display:none;flex:0 0 auto">
@@ -11810,7 +11837,7 @@ window.BulkImport = (function () {
 
   /* Service Worker: يخلي التطبيق يفتح أسرع ويشتغل أوفلاين */
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
-    window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+    window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js?v='+encodeURIComponent(window.__SHAMAMSA_RELEASE_VERSION__||'dev')).catch(function () {}); });
   }
 
   /* ───────────── التهيئة ───────────── */
@@ -16008,7 +16035,7 @@ html.dark #offline-sync-modal .osm-item{
 </script>
 <script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4ce5e1ef93f0e47',t:'MTc5MjM5ODA2OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script id="build-freshness">
 (function(){
-  var BUILD="V5-2026-10-27";
+  var BUILD="V"+(window.__SHAMAMSA_RELEASE_VERSION__||"1.0.5")+"-2026-11-08";
   window.__BUILD__=BUILD;
   try{console.info("[school] build:",BUILD)}catch(_){}
   function paint(){var t=document.getElementById("att-build-tag");if(t)t.textContent="· نسخة "+BUILD}
@@ -31708,4 +31735,4 @@ html.dark .wa-sent-line{background:rgba(255,255,255,.05)}
 })();
 </script>
 
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a57536473faae15d',t:'MTc5NDE0NzU1OQ=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a57536473faae15d',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body> </html>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5769b334bd0eda6',t:'MTc5NDE2MjE3OQ=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a5769b334bd0eda6',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body> </html>
