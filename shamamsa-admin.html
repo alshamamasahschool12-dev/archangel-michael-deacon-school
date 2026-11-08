@@ -3122,7 +3122,9 @@ html.dark .cx-session-online{border-color:var(--cx-paper,#1d151d)}
 .cx-release-trigger svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .cx-release-label{font-size:.67rem;font-weight:800}.cx-release-number{direction:ltr;unicode-bidi:isolate;font:800 .7rem/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--cx-brand,#7a1257)}
 html.dark .cx-release-trigger{background:rgba(212,175,55,.07);border-color:var(--cx-line,#49343f)}html.dark .cx-release-number{color:var(--cx-brand-3,#f07ab4)}
-.cx-session-mobile{display:none;align-items:center;justify-content:space-between;gap:10px;width:min(1440px,calc(100% - 28px));margin:0 auto;padding:0 0 8px}
+/* منع تزاحم بطاقة الحساب مع لينكات الهيدر: الصف الأصلي للينكات فقط، والحساب في شريط مستقل على كل المقاسات */
+.cx-actions>.cx-session-account,.cx-actions>.cx-release-trigger{display:none!important}
+.cx-session-mobile{display:flex;align-items:center;justify-content:space-between;gap:10px;width:min(1440px,calc(100% - 28px));margin:0 auto;padding:0 0 8px}
 .cx-session-mobile .cx-session-account{max-width:min(70vw,330px);min-height:38px;padding-block:3px}
 .cx-session-mobile .cx-session-avatar{flex-basis:31px;width:31px;height:31px}.cx-session-mobile .cx-session-name,.cx-session-mobile .cx-session-role{max-width:min(43vw,230px)}
 .cx-session-mobile .cx-release-trigger{margin-inline-start:auto;flex:none}
@@ -3150,6 +3152,12 @@ body.cx-has-session .cx-drawer-account{display:block}
 .cx-release-item.wide{grid-column:1/-1}.cx-release-item span{display:block;color:var(--text-sub,#6b5a42);font-size:.68rem;font-weight:700;margin-bottom:3px}.cx-release-item b{display:block;color:var(--text-main,#2c1b10);font-size:.82rem;font-weight:900;overflow-wrap:anywhere}.cx-release-item b.ltr{direction:ltr;text-align:right;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
 .cx-release-note{margin:12px 1px 0;color:var(--text-sub,#6b5a42);font-size:.73rem;font-weight:650;line-height:1.8;text-align:center}
 .cx-release-actions{display:flex;gap:8px;margin-top:14px}.cx-release-copy,.cx-release-done{flex:1;min-height:42px;border-radius:13px;font:800 .8rem var(--app-font,'Tajawal',sans-serif);cursor:pointer}.cx-release-copy{border:1px solid var(--card-border,#e7d8c2);background:var(--gold-soft,rgba(185,137,42,.1));color:var(--text-main,#2c1b10)}.cx-release-done{border:0;background:linear-gradient(90deg,var(--brand,#a3186b),var(--brand-2,#c026a3));color:#fff}
+@media(min-width:1401px){
+  .cx-session-mobile{width:min(1220px,calc(100% - 24px));justify-content:flex-start;gap:10px;padding-bottom:7px}
+  .cx-session-mobile .cx-session-account{max-width:330px;flex:0 1 330px}
+  .cx-session-mobile .cx-session-name,.cx-session-mobile .cx-session-role{max-width:230px}
+  .cx-session-mobile .cx-release-trigger{margin-inline-start:0}
+}
 @media(max-width:1400px){
   .cx-actions>.cx-session-account,.cx-actions>.cx-release-trigger{display:none!important}
   .cx-session-mobile{display:flex}
@@ -3165,8 +3173,8 @@ body.cx-has-session .cx-drawer-account{display:block}
 @media print{.cx-session-account,.cx-release-trigger,.cx-session-mobile,.cx-drawer-account,.cx-drawer-version,.cx-release-overlay{display:none!important}}
 @media(prefers-reduced-motion:reduce){.cx-session-account,.cx-release-trigger,.cx-release-dialog{animation:none!important;transition:none!important}}
 </style>
-<script id="shamamsa-release-meta" type="application/json">{"app":"مدرسة الملاك ميخائيل للشمامسة","file":"shamamsa-admin.html","version":"1.0.1","build":2,"updatedAt":"2026-11-08T14:46+02:00","sourceHash":"0c8c0e9580c66ad11ddea386d0a953242f03bbe6d8838dcbd2b6c320f0eab135"}</script>
-<meta name="application-version" content="1.0.1">
+<script id="shamamsa-release-meta" type="application/json">{"app":"مدرسة الملاك ميخائيل للشمامسة","file":"shamamsa-admin.html","version":"1.0.2","build":3,"updatedAt":"2026-11-08T15:24+02:00","sourceHash":"be780403363e278d078248dbb31bd328848ac63dac0e611b0a16b250d17a8fdf"}</script>
+<meta name="application-version" content="1.0.2">
 <!-- RELEASE AUTOMATION: bump_shamamsa_version.py يحدّث رقم الإصدار والـBuild والتاريخ والبصمة تلقائيًا عند أي تغيير في محتوى الملف. -->
 </head> <body>
 <div class="cx-progress" aria-hidden="true"><i></i></div>
@@ -31678,4 +31686,4 @@ html.dark .wa-sent-line{background:rgba(255,255,255,.05)}
 })();
 </script>
 
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a574b6a38cffbaa0',t:'MTc5NDE0MjMzMQ=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a574b6a38cffbaa0',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body> </html>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a574e9a87975ed9f',t:'MTc5NDE0NDQyMQ=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a574e9a87975ed9f',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body> </html>
