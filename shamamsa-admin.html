@@ -3122,12 +3122,17 @@ html.dark .cx-session-online{border-color:var(--cx-paper,#1d151d)}
 .cx-release-trigger svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .cx-release-label{font-size:.67rem;font-weight:800}.cx-release-number{direction:ltr;unicode-bidi:isolate;font:800 .7rem/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--cx-brand,#7a1257)}
 html.dark .cx-release-trigger{background:rgba(212,175,55,.07);border-color:var(--cx-line,#49343f)}html.dark .cx-release-number{color:var(--cx-brand-3,#f07ab4)}
-/* منع تزاحم بطاقة الحساب مع لينكات الهيدر: الصف الأصلي للينكات فقط، والحساب في شريط مستقل على كل المقاسات */
-.cx-actions>.cx-session-account,.cx-actions>.cx-release-trigger{display:none!important}
-.cx-session-mobile{display:flex;align-items:center;justify-content:space-between;gap:10px;width:min(1440px,calc(100% - 28px));margin:0 auto;padding:0 0 8px}
-.cx-session-mobile .cx-session-account{max-width:min(70vw,330px);min-height:38px;padding-block:3px}
-.cx-session-mobile .cx-session-avatar{flex-basis:31px;width:31px;height:31px}.cx-session-mobile .cx-session-name,.cx-session-mobile .cx-session-role{max-width:min(43vw,230px)}
-.cx-session-mobile .cx-release-trigger{margin-inline-start:auto;flex:none}
+/* كبسولة حساب مدمجة داخل الهيدر — بدون صف إضافي أو تزاحم مع اللينكات */
+.cx-session-mobile{display:none!important}
+#cxNav .cx-actions>.cx-session-account{order:100;max-width:178px;min-height:40px;padding:3px 9px;gap:8px;border-radius:14px;flex:0 1 auto}
+body.cx-has-session #cxNav .cx-actions>.cx-session-account{display:flex}
+#cxNav .cx-actions>.cx-release-trigger{display:inline-flex;order:99;min-height:40px;border-radius:14px;padding:5px 9px;flex:0 0 auto}
+#cxNav .cx-actions .cx-session-kicker{display:none}
+#cxNav .cx-actions .cx-session-avatar{flex-basis:31px;width:31px;height:31px}
+#cxNav .cx-actions .cx-session-copy{line-height:1.2}
+#cxNav .cx-actions .cx-session-name{max-width:112px;font-size:.76rem}
+#cxNav .cx-actions .cx-session-role{max-width:112px;font-size:.58rem}
+#cxNav .cx-actions .cx-session-compact-version{display:none;direction:ltr;unicode-bidi:isolate;font:800 .59rem/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--cx-muted);text-align:right}
 .cx-tab-profile{display:inline-flex!important;align-items:center;justify-content:center;gap:7px}
 .cx-tab-avatar{width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--brand,#a3186b),var(--brand-2,#c026a3));color:#fff;border:1.5px solid var(--gold-light,#e8c873);font-size:.68rem;font-weight:900;line-height:1}
 .cx-tab-avatar img{width:100%;height:100%;object-fit:cover;display:block}.tab-btn.active .cx-tab-avatar{border-color:rgba(255,255,255,.85)}
@@ -3153,28 +3158,45 @@ body.cx-has-session .cx-drawer-account{display:block}
 .cx-release-note{margin:12px 1px 0;color:var(--text-sub,#6b5a42);font-size:.73rem;font-weight:650;line-height:1.8;text-align:center}
 .cx-release-actions{display:flex;gap:8px;margin-top:14px}.cx-release-copy,.cx-release-done{flex:1;min-height:42px;border-radius:13px;font:800 .8rem var(--app-font,'Tajawal',sans-serif);cursor:pointer}.cx-release-copy{border:1px solid var(--card-border,#e7d8c2);background:var(--gold-soft,rgba(185,137,42,.1));color:var(--text-main,#2c1b10)}.cx-release-done{border:0;background:linear-gradient(90deg,var(--brand,#a3186b),var(--brand-2,#c026a3));color:#fff}
 @media(min-width:1401px){
-  .cx-session-mobile{width:min(1220px,calc(100% - 24px));justify-content:flex-start;gap:10px;padding-bottom:7px}
-  .cx-session-mobile .cx-session-account{max-width:330px;flex:0 1 330px}
-  .cx-session-mobile .cx-session-name,.cx-session-mobile .cx-session-role{max-width:230px}
-  .cx-session-mobile .cx-release-trigger{margin-inline-start:0}
+  #cxNav .cx-nav-inner{width:min(1540px,calc(100% - 28px))}
+}
+@media(min-width:1401px) and (max-width:1750px){
+  body.cx-has-session #cxNav .cx-clock{display:none}
 }
 @media(max-width:1400px){
-  .cx-actions>.cx-session-account,.cx-actions>.cx-release-trigger{display:none!important}
-  .cx-session-mobile{display:flex}
+  body.cx-has-session #cxNav .cx-clock{display:none}
   html{scroll-padding-top:calc(var(--cx-offset-nav-h,var(--cx-nav-h,120px)) + 18px)}
 }
-@media(max-width:520px){
-  .cx-session-mobile{gap:7px;width:calc(100% - 20px);padding-bottom:7px}
-  .cx-session-mobile .cx-session-kicker{font-size:.58rem}.cx-session-mobile .cx-session-name{font-size:.74rem}.cx-session-mobile .cx-session-role{font-size:.58rem}
-  .cx-session-mobile .cx-release-label{display:none}.cx-release-trigger{gap:4px;padding-inline:8px}.cx-release-number{font-size:.66rem}
+@media(max-width:640px){
+  body.cx-has-session #cxNav .cx-brand-copy{display:none}
+  #cxNav .cx-actions{gap:5px}
+  #cxNav .cx-actions>.cx-session-account{max-width:132px;min-height:38px;padding:3px 7px;gap:6px}
+  #cxNav .cx-actions>.cx-release-trigger{display:none}
+  #cxNav .cx-actions .cx-session-avatar{flex-basis:28px;width:28px;height:28px}
+  #cxNav .cx-actions .cx-session-name{max-width:72px;font-size:.72rem}
+  #cxNav .cx-actions .cx-session-role{display:none}
+  #cxNav .cx-actions .cx-session-compact-version{display:block}
+  #cxNav .cx-actions .cx-release-label{display:none}
+  #cxNav .cx-actions .cx-release-number{font-size:.64rem}
   .cx-foot-release{margin:8px 0 0}.cx-release-dialog{border-radius:22px}.cx-release-body{padding:15px}.cx-release-head{padding-top:19px}
 }
-@media(max-width:340px){.cx-session-mobile .cx-session-role{display:none}.cx-session-mobile .cx-session-name{max-width:40vw}.cx-session-mobile .cx-session-account{gap:6px;padding-inline:7px}}
+@media(max-width:380px){
+  #cxNav .cx-actions{gap:4px}
+  #cxNav .cx-actions>.cx-session-account{max-width:106px;padding-inline:5px}
+  #cxNav .cx-actions .cx-session-name{max-width:52px}
+  #cxNav .cx-actions .cx-icon,#cxNav .cx-actions .la-nav-bell{width:36px;height:36px;min-width:36px;min-height:36px}
+  body.cx-has-session #cxNav .cx-logo{width:38px;height:38px}
+}
+@media(max-width:340px){
+  #cxNav .cx-actions>.cx-session-account{max-width:94px}
+  #cxNav .cx-actions .cx-session-name{max-width:44px}
+  #cxNav .cx-actions>.cx-release-trigger svg{display:none}
+}
 @media print{.cx-session-account,.cx-release-trigger,.cx-session-mobile,.cx-drawer-account,.cx-drawer-version,.cx-release-overlay{display:none!important}}
 @media(prefers-reduced-motion:reduce){.cx-session-account,.cx-release-trigger,.cx-release-dialog{animation:none!important;transition:none!important}}
 </style>
-<script id="shamamsa-release-meta" type="application/json">{"app":"مدرسة الملاك ميخائيل للشمامسة","file":"shamamsa-admin.html","version":"1.0.2","build":3,"updatedAt":"2026-11-08T15:24+02:00","sourceHash":"be780403363e278d078248dbb31bd328848ac63dac0e611b0a16b250d17a8fdf"}</script>
-<meta name="application-version" content="1.0.2">
+<script id="shamamsa-release-meta" type="application/json">{"app":"مدرسة الملاك ميخائيل للشمامسة","file":"shamamsa-admin.html","version":"1.0.4","build":5,"updatedAt":"2026-11-08T16:17+02:00","sourceHash":"ad3726c61a19c99279579048231e78495831cc39c0a82eb25b1d5f1ed6eb5760"}</script>
+<meta name="application-version" content="1.0.4">
 <!-- RELEASE AUTOMATION: bump_shamamsa_version.py يحدّث رقم الإصدار والـBuild والتاريخ والبصمة تلقائيًا عند أي تغيير في محتوى الملف. -->
 </head> <body>
 <div class="cx-progress" aria-hidden="true"><i></i></div>
@@ -3196,7 +3218,7 @@ body.cx-has-session .cx-drawer-account{display:block}
 <div class="cx-actions">
 <button type="button" class="cx-session-account" data-current-account aria-label="الحساب الحالي" title="عرض بيانات الحساب الحالي">
 <span class="cx-session-avatar" data-account-avatar><span data-account-initial>؟</span><i class="cx-session-online" aria-hidden="true"></i></span>
-<span class="cx-session-copy"><span class="cx-session-kicker">● داخل دلوقتي باسم</span><strong class="cx-session-name" data-account-name>—</strong><span class="cx-session-role" data-account-role>—</span></span>
+<span class="cx-session-copy"><span class="cx-session-kicker">● داخل دلوقتي باسم</span><strong class="cx-session-name" data-account-name>—</strong><span class="cx-session-role" data-account-role>—</span><span class="cx-session-compact-version" data-version-text>v1.0.3</span></span>
 </button>
 <button type="button" class="cx-release-trigger" data-open-release aria-haspopup="dialog" aria-label="عرض تفاصيل إصدار النظام" title="إصدار النظام — اضغط للتفاصيل"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8h4l3 3v9H5V4h7v4Z"/><path d="M12 4v4h4M8 15h8M8 12h3"/></svg><span class="cx-release-label">الإصدار</span><b class="cx-release-number" data-version-text>v1.0.0</b></button>
 
@@ -31686,4 +31708,4 @@ html.dark .wa-sent-line{background:rgba(255,255,255,.05)}
 })();
 </script>
 
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a574e9a87975ed9f',t:'MTc5NDE0NDQyMQ=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a574e9a87975ed9f',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body> </html>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a57536473faae15d',t:'MTc5NDE0NzU1OQ=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a57536473faae15d',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body> </html>
