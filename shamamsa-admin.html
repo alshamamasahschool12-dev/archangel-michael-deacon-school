@@ -550,12 +550,12 @@ html.dark body::before{opacity:.05;filter:invert(1) hue-rotate(180deg)}
 }
 .cx-nav::before{content:"";position:absolute;inset:0 0 auto;height:5px;background:var(--cx-braid) repeat-x center/48px 14px;opacity:.85}
 .cx-nav-inner{width:min(1220px,calc(100% - 24px));margin-inline:auto;min-height:var(--cx-nav-h);display:flex;align-items:center;gap:14px;padding-top:5px}
-.cx-brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--cx-ink);min-width:0;flex:0 1 auto}
+.cx-brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--cx-ink);flex:0 1 auto}
 .cx-logo{width:44px;height:44px;object-fit:contain;border-radius:12px;background:radial-gradient(circle at 35% 30%,#fff,#fdf6e6 70%);padding:3px;box-shadow:0 6px 16px rgba(90,55,20,.18),0 0 0 1px color-mix(in srgb,var(--cx-gold) 45%,transparent);flex:0 0 auto}
 html.dark .cx-logo{background:radial-gradient(circle at 35% 30%,#3a2b37,#241a23 72%)}
-.cx-brand-copy{line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.cx-brand-copy strong{display:block;font-size:.95rem;font-weight:900;letter-spacing:.1px}
-.cx-brand-copy span{display:block;font-size:.66rem;font-weight:700;color:var(--cx-muted)}
+.cx-brand-copy{line-height:1.25;white-space:normal;overflow:visible;text-overflow:clip}
+.cx-brand-copy strong{display:block;font-size:.95rem;font-weight:900;letter-spacing:.1px;white-space:normal;overflow-wrap:anywhere}
+.cx-brand-copy span{display:block;font-size:.66rem;font-weight:700;color:var(--cx-muted);white-space:normal;overflow-wrap:anywhere}
 .cx-links{display:flex;align-items:center;gap:4px;margin-inline-start:auto;overflow-x:auto;scrollbar-width:none;padding:4px 2px}
 .cx-links::-webkit-scrollbar{display:none}
 .cx-links a{
@@ -2100,6 +2100,58 @@ function cmsIcon(name){return `<svg class="cms-icon" viewBox="0 0 24 24" fill="n
 @media(max-width:430px){#cxNav .cx-priest-mobile{padding-bottom:7px}}
 @media(max-width:360px){#cxNav .cx-clock span{display:none}#cxNav .cx-actions{gap:4px}#cxNav .cx-nav-inner{gap:6px}#cxNav .cx-brand-copy strong{font-size:.77rem}}
 </style>
+<style id="cx-admin-priest-separation">
+/* ── فاصل بسيط وواضح بين «الإدارة» و«دخول الأب الكاهن» في كل قوائم الموقع ── */
+:root{--cx-nav-sep:color-mix(in srgb,var(--cx-gold,#c3922b) 40%,var(--cx-line,#eadcc4))}
+html.dark{--cx-nav-sep:color-mix(in srgb,var(--cx-gold,#e0b44c) 34%,rgba(255,255,255,.16))}
+
+/* الشريط العلوي */
+#cxNav .cx-links>.cx-admin-entry{margin-inline-end:2px}
+#cxNav .cx-links>.cx-priest-entry{margin-inline-start:24px}
+#cxNav .cx-links>.cx-priest-entry::before{
+  content:"";position:absolute;inset-inline-start:-13px;top:50%;transform:translateY(-50%);
+  width:1px;height:19px;background:var(--cx-nav-sep);border-radius:1px;pointer-events:none;
+}
+
+/* صفّ الهاتف أسفل الشريط */
+#cxNav .cx-priest-mobile{gap:20px!important}
+#cxNav .cx-priest-mobile>a{white-space:nowrap}
+#cxNav .cx-priest-mobile>a+a{position:relative}
+#cxNav .cx-priest-mobile>a+a::before{
+  content:"";position:absolute;inset-inline-start:-11px;top:50%;transform:translateY(-50%);
+  width:1px;height:15px;background:var(--cx-nav-sep);border-radius:1px;pointer-events:none;
+}
+
+/* زر الأب الكاهن بجوار الساعة: ما يتضغطش */
+#cxNav .cx-priest-action{flex:0 0 auto;margin-inline-start:3px;white-space:nowrap}
+
+/* درج الهاتف */
+.cx-drawer>.cx-admin-entry{margin-bottom:2px}
+.cx-drawer>.cx-priest-entry{
+  margin-top:14px;padding-top:16px;border-top:1px solid var(--cx-line);
+  border-radius:0 0 14px 14px;
+}
+
+/* روابط الفوتر */
+.cx-foot-links>.cx-priest-entry{
+  grid-column:1/-1;margin-top:12px;padding-top:14px;
+  border-top:1px solid var(--cx-nav-sep);border-radius:0 0 10px 10px;
+}
+</style>
+<style id="cx-brand-never-clipped">
+/* اسم المدرسة يظهر كاملاً على كل الشاشات: يلفّ سطرين بدل ما يتقصّ،
+   والنسخة المختصرة (الكاملة) تظهر على الشاشات الصغيرة والمتوسطة. */
+.cx-brand-copy>.cx-brand-short{display:none}
+@media (max-width:860px){
+  .cx-brand-copy>strong:not(.cx-brand-short){display:none}
+  .cx-brand-copy>.cx-brand-short{display:block}
+}
+/* على الموبايل نخفّف الساعة من الشريط عشان اسم المدرسة يفضل مكتمل
+   (الساعة لسه موجودة في باقي صفحات الموقع) */
+@media (max-width:480px){
+  #cxNav .cx-clock{display:none}
+}
+</style>
 <style id="bulk-import-css">
 /* ══════════════════════════════════════════════════════════════════════════
    📥 استيراد بيانات المخدومين — شمامسة أدمن (تبويب تسجيل المخدومين)
@@ -3073,7 +3125,7 @@ html body .form-grid .field .wa-inline-btn{width:46px;height:46px;min-height:46p
  html body :is(#la-dialog,#la-owner-panel) .la-head h2{font-size:1.4rem}
  body.la-approver-ready #cxNav .cx-actions{gap:5px}
  body.la-approver-ready #cxNav .cx-brand{gap:6px;min-width:0}
- body.la-approver-ready #cxNav .cx-brand-copy{max-width:88px}
+ body.la-approver-ready #cxNav .cx-brand-copy{max-width:170px}
  body.la-approver-ready #cxNav .cx-brand-copy strong{font-size:.75rem}
  body.la-approver-ready #cxNav .cx-logo{width:36px;height:36px;min-width:36px}
  body.la-approver-ready #cxNav .cx-clock{display:none}
@@ -3202,7 +3254,7 @@ body.cx-has-session .cx-drawer-account{display:block}
 @media print{.cx-session-account,.cx-release-trigger,.cx-session-mobile,.cx-drawer-account,.cx-drawer-version,.cx-release-overlay{display:none!important}}
 @media(prefers-reduced-motion:reduce){.cx-session-account,.cx-release-trigger,.cx-release-dialog{animation:none!important;transition:none!important}}
 </style>
-<script id="shamamsa-release-meta" type="application/json">{"app":"مدرسة الملاك ميخائيل للشمامسة","file":"shamamsa-admin.html","version":"1.0.6","build":7,"updatedAt":"2026-11-08T20:21+02:00","sourceHash":"421435364de592b48e6c500eb43c5b16f9d69b7572f956017bc73fb2169c6364"}</script>
+<script id="shamamsa-release-meta" type="application/json">{"app":"مدرسة الملاك ميخائيل للشمامسة","file":"shamamsa-admin.html","version":"1.0.7","build":8,"updatedAt":"2026-11-09T18:10+02:00","sourceHash":"421435364de592b48e6c500eb43c5b16f9d69b7572f956017bc73fb2169c6364"}</script>
 <script id="shamamsa-release-cache-guard">
 /* منع تشغيل نسخة JS قديمة من الـCache بعد نشر إصدار جديد */
 (function(){
@@ -3218,11 +3270,118 @@ body.cx-has-session .cx-drawer-account{display:block}
     var jobs=[];
     if('serviceWorker' in navigator)jobs.push(navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.unregister().catch(function(){return false})}))}).catch(function(){}));
     if('caches' in window)jobs.push(caches.keys().then(function(keys){return Promise.all(keys.map(function(k){return caches.delete(k)}))}).catch(function(){}));
-    Promise.all(jobs).then(function(){setTimeout(function(){location.reload()},40)},function(){setTimeout(function(){location.reload()},40)});
+    function __finishGuard(){if(window.shamamsaSafeReload)window.shamamsaSafeReload('cache-guard');else setTimeout(function(){location.reload()},40);}
+    Promise.all(jobs).then(function(){setTimeout(__finishGuard,40)},function(){setTimeout(__finishGuard,40)});
   }catch(_){}
 })();
 </script>
-<meta name="application-version" content="1.0.6">
+<script id="cx-session-boot">
+/* ══════════════════════════════════════════════════════════════════════════
+   استعادة الجلسة قبل أول رسم للشاشة (Session Boot)
+   ──────────────────────────────────────────────────────────────────────────
+   المشكلة: أي إعادة تحميل للصفحة (تحديث Service Worker بعد إصدار جديد،
+   مسح الكاش، رجوع المستخدم لنفس التبويب…) كانت تعرض شاشة الدخول ثواني
+   وبعدها يدخل تاني — فتبدو كأنها «دخول وخروج» متكرر.
+   الحل: نقرّر من التخزين — قبل أي رسم — إن الجلسة سليمة، فنخفي شاشة الدخول
+   ونظهر لوحة التحكم فورًا، والكود الأصلي يكمل تسجيل الدخول في الخلفية.
+   ══════════════════════════════════════════════════════════════════════════ */
+(function(){
+  var SK='shamamsa-servant-session', RK='shamamsa-servant-session-role',
+      UK='shamamsa-servant-session-username', PK='shamamsa-servant-session-permissions',
+      RM='shamamsa-servant-remember', LT='shamamsa-last-tab', BOOT='cx-boot-session';
+
+  /* نسخة «تذكرني» لازم تكون سليمة وغير منتهية، وغير خاصة بحساب أبونا */
+  function readRemember(){
+    try{
+      var raw=JSON.parse(localStorage.getItem(RM)||'null');
+      if(!raw||!raw.username||!raw.name)return null;
+      if(raw.role==='father')return null;                  /* حساب أبونا له صفحته المستقلة */
+      var exp=Number(raw.expiresAt);
+      if(!isFinite(exp)||exp<=Date.now())return null;      /* منتهية → نترك شاشة الدخول */
+      return raw;
+    }catch(_){return null}
+  }
+
+  window.shamamsaHasActiveSession=function(){
+    try{
+      if(sessionStorage.getItem(SK))return true;
+      if(sessionStorage.getItem(UK))return true;
+      var r=JSON.parse(localStorage.getItem(RM)||'null');
+      if(r&&r.username&&Number(r.expiresAt)>Date.now())return true;
+    }catch(_){}
+    return false;
+  };
+
+  /* قاطع دورة: يمنع أي إعادة تحميل تلقائية إنها تلف في حلقة */
+  window.shamamsaSafeReload=function(reason,opts){
+    opts=opts||{};
+    try{
+      var now=Date.now(),raw=JSON.parse(sessionStorage.getItem('shamamsa-auto-reload-log')||'[]');
+      if(!Array.isArray(raw))raw=[];
+      raw=raw.filter(function(t){return typeof t==='number'&&now-t<60000});
+      if(raw.length>=3){
+        try{console.warn('[safe-reload] تم تجاهل إعادة تحميل تلقائية ('+reason+') — الحد ٣ مرات في الدقيقة')}catch(__){}
+        return false;
+      }
+      raw.push(now);
+      sessionStorage.setItem('shamamsa-auto-reload-log',JSON.stringify(raw));
+    }catch(_){}
+    if(!opts.allowWithSession&&window.shamamsaHasActiveSession()){
+      try{console.info('[safe-reload] تم تأجيل إعادة التحميل ('+reason+') لأن فيه جلسة نشطة')}catch(__){}
+      return false;
+    }
+    setTimeout(function(){try{location.reload()}catch(_){}},40);
+    return true;
+  };
+
+  try{
+    var root=document.documentElement, role=null, user=null, ok=false;
+    if(sessionStorage.getItem(SK)){
+      role=sessionStorage.getItem(RK); user=sessionStorage.getItem(UK);
+      ok=!!(role&&role!=='father');
+    }
+    if(!ok){
+      var r=readRemember();
+      if(r){
+        ok=true; role=r.role||'admin'; user=r.username||'';
+        try{
+          sessionStorage.setItem(UK,user);
+          sessionStorage.setItem(RK,role);
+          sessionStorage.setItem(PK,JSON.stringify(Array.isArray(r.permissions)?r.permissions:[]));
+        }catch(_){}
+      }
+    }
+    if(ok){
+      root.classList.add(BOOT);
+      /* نخفي تبويب «تسجيل المخدومين» لو آخر تبويب محفوظ غيره — لحد ما switchTab يظبطه */
+      document.addEventListener('DOMContentLoaded',function(){
+        try{
+          var saved=sessionStorage.getItem(LT);
+          if(saved&&saved!=='deacons'){
+            var d=document.getElementById('tab-deacons');
+            if(d&&d.style.display!=='none')d.style.display='none';
+          }
+        }catch(_){}
+      },{once:true});
+      /* شبكة أمان: لو الدخول مقدرش يكمل خلال 9 ثوان نرجّع شاشة الدخول */
+      setTimeout(function(){
+        try{
+          var app=document.getElementById('app-content');
+          if(app&&getComputedStyle(app).display==='none')root.classList.remove(BOOT);
+        }catch(_){}
+      },9000);
+    }
+  }catch(_){}
+})();
+</script>
+<style id="cx-session-boot-css">
+/* الجلسة سليمة → لوحة التحكم تبان من أول لحظة، وشاشة الدخول ما تبنش خالص */
+html.cx-boot-session #gate-wrap{display:none!important}
+html.cx-boot-session #app-content{display:block!important}
+html.cx-boot-session #cxLogout{display:grid!important}
+html.cx-boot-session #cxDrawerLogout{display:flex!important}
+</style>
+<meta name="application-version" content="1.0.7">
 <!-- RELEASE AUTOMATION: bump_shamamsa_version.py يحدّث رقم الإصدار والـBuild والتاريخ والبصمة تلقائيًا عند أي تغيير في محتوى الملف. -->
 </head> <body>
 <div class="cx-progress" aria-hidden="true"><i></i></div>
@@ -3230,7 +3389,7 @@ body.cx-has-session .cx-drawer-account{display:block}
 <div class="cx-nav-inner">
 <a aria-label="الصفحة الرئيسية — مدرسة الملاك ميخائيل للشمامسة" class="cx-brand" href="index.html">
 <img alt="شعار مدرسة الملاك ميخائيل للشمامسة" class="cx-logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABMCAMAAAClKEJHAAADAFBMVEX4+Pjp6OfY1tP8/PzNycaqp6YMWIy4trRJSEjGurNpZ2d3dnZYV1aMiIaXlpXNw7w3ODcWd6/i29gsKSkTZZmPFgkohLapmpMke65QGA5qJxSmWjDm4d2wopmMem8WFhZLOS5XJRZsFgyQSCgNaqRURi9tSCywZDc0PEaVVDHV5OxzNBqRhHuuyNRvVDSRZ1GRuM1sV1BuNiYrlMYKBgXI2uUWicQ0CgUES4Q1GRJRCwUXhLuMJhXpZhpKKCeIWU251+bGaDJpYVpqmLWXw9mveWwSNnUvJhtUNBpup8iPpK2nGgqpaEqyvMTTppUqZ5LMmIgak80waLMnjcJwDASKrcivSRzPdDVOkrpLl8ePamemjYTEiGsPJywnVpRJiLBLhct6udiMnaOohHDzeCkJK2YxQ05FOkZmRB1sTEh6g4uGCwCHOBqKOCmQRRyKSUeOclmqelTQekvVh1PVl2fiy8I2U25RZ45Kd7RVospwLCt4o76VyOHPWSLFrKPXtpvqp3Lpu4/mybju7u7z8/MbN0sPRH0qRTYnTIhYUD1LVnVZZ1JSYnRwq+uHYjibtLuwBwajJBCoSiK0V1Koy+LYWx3b9P3zxJTi3OEADzYeIBoXI00eQ1cAXqEhHyE4KEY/Sms9WUcsXKI9d545pdBBTHFKbaBUcoVfhJhevON9XG1+f4BoksNzsvR8wN+BKSKfUR6f0uuoPReqMCm2Vxy0Z2zDTRnLe4DGjYDf4N/pXxrwbiDvcB/1hjT3jkLgg4f0mk3imGHpl5vgvbX5+fn6+voAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACvCC5WAAABAHRSTlP+/v6G/v7//v7//v/+/v7////+///////////////+/v/////////////////////////////////////////////////////////////+//3//////////////////////////////////////////////////////////////////YfL////////////////////////////////////////////////////////////////////////////////////VqQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALjUwUAAADG5JREFUeNq1WQdj28YVvrve6YDDAQQBkRS4h0iapEiKkmXtZVmSLcsz3jte2XsnzWzaZrRJ9957773n/+o7gKQpW47TRH6SKBAE3/f2ANAHbjOh90EE3V7C6VcOHjy437ltAHpl/xNJRz9z8Dbxd9bX20Bnbg/Amcq6I7LZFEL7998O/k+sV9Jz4+Pj2wHhDN5q7iyF9i82W5Nezhufw+jgKwjx03Tr+KcTx+fNRNNMN9crtUmsbMQePF7hW8V/KPGPyrbDX44Ztcebny9PxtB+HVUS5eOVLdKBlo4vPnVhpfUC80pnXnqsMm7ud1itViuX57fGF80Hy/M/PXxlJP/AXK5QSbx8xis9Us55XqH8YGwr+JORQuGNCyt3fepYBKiW+Oej903lcrsrnpcolLZChVi8cH925Ur52OyvInsjn3p0EV6P5GrjOa9QqLVVoO8HaGd8ZKQwl108NvvovT+PzMzkASAy5ZqlSiUXbwVVyjLfB0DWKxceyOU/OXMsfaBZyOfzylJHRlArXygUcn6FZZrWufrVWxRMy0BEbohv7OUKcU/OR/JTc4XyemEKLDYzE5kh++ZqhYKXUl6yLLt9MX4HW6nPiK1hIk3KGOeccXV1aDw3kstWL92Xn8oXmjGWNlm6VPvdTP1zF+PxEU8oBTjWbskeMcNElEoNM1uzDMOQQmSYlESvxUfGTbQciXhTRU5InRBu1P5Uvvh2vZWvxZvwVU6wuBV7iwnDMDOWaVNuCBdICCpMaVs61J9svWoeUQBmegh+DPmLy4t3lwxtKh4vqRhC2MDvHEfUNH2pXVtyzLgUUnJpb8+4Not5uXFjob4GGni5WiGRSFRqubvuGSndXcqOx714UrVS0omiVzfryYCtWYJpbsaVVlcSJhBlwibp2kjcqtfvjez1pmqJsqJE4crhc1KW3srGvRz1AYK4ePU/H/jvJpkq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"/>
-<span class="cx-brand-copy"><strong>مدرسة الملاك ميخائيل للشمامسة</strong><span>كنيسة رئيس الملائكة الجليل ميخائيل — بالأندلس</span></span>
+<span class="cx-brand-copy"><strong>مدرسة الملاك ميخائيل للشمامسة</strong><strong class="cx-brand-short">مدرسة الشمامسة</strong><span>كنيسة رئيس الملائكة الجليل ميخائيل — بالأندلس</span></span>
 </a>
 <nav aria-label="التنقل الرئيسي" class="cx-links">
 <a class="" href="index.html">الرئيسية</a>
@@ -3239,7 +3398,7 @@ body.cx-has-session .cx-drawer-account{display:block}
 <a class="" href="synaxarium.html">السنكسار</a>
 <a class="" href="agpeya.html">الأجبية</a>
 <a class="" href="calendar.html">التقويم</a>
-<a class="on" href="shamamsa-admin.html">الإدارة</a><a class="cx-priest-entry" href="father-control.html">دخول الأب الكاهن</a>
+<a class="on cx-admin-entry" href="shamamsa-admin.html">الإدارة</a><a class="cx-priest-entry" href="father-control.html">دخول الأب الكاهن</a>
 </nav>
 <div class="cx-actions">
 <button type="button" class="cx-session-account" data-current-account aria-label="الحساب الحالي" title="عرض بيانات الحساب الحالي">
@@ -3279,7 +3438,7 @@ body.cx-has-session .cx-drawer-account{display:block}
 <a class="" href="synaxarium.html">🕯️ السنكسار</a>
 <a class="" href="agpeya.html">🙏 الأجبية</a>
 <a class="" href="calendar.html">📅 التقويم القبطي</a><a class="" href="library.html">📚 المكتبة ومصادر</a>
-<a class="on" href="shamamsa-admin.html">🔒 دخول الإدارة</a><a class="cx-priest-entry" href="father-control.html">✝ دخول الأب الكاهن</a>
+<a class="on cx-admin-entry" href="shamamsa-admin.html">🔒 دخول الإدارة</a><a class="cx-priest-entry" href="father-control.html">✝ دخول الأب الكاهن</a>
 <div class="cx-dactions">
 <button class="cx-icon" data-cx-act="back" title="رجوع" type="button">↩</button>
 <a class="cx-icon" href="share.html" style="text-decoration:none" title="مشاركة الصفحة">↗</a>
@@ -3856,7 +4015,7 @@ function getRememberedSession(){
   armRememberExpiry(expiry,currentServantUsername);
   return data.name;
 }
-function cxConfirmLogout(){var msg="متأكد إنك عايز تسجّل خروج من الإدارة؟";if(typeof showConfirmModal==="function"){showConfirmModal(msg,logout)}else if(confirm(msg)){logout()}}function logout(){if(window.AttendanceAccess)window.AttendanceAccess.signOut();logActivity("تسجيل خروج","");clearServantSessionState();clearRememberedSession();location.reload()}function toggleGatePassVisibility(){const input=document.getElementById("gate-pass");const btn=document.getElementById("gate-pass-toggle");const isHidden=input.type==="password";input.type=isHidden?"text":"password";btn.textContent=isHidden?"🙈":"👁️"}const VERIFY_SOUND_KEY="shamamsa-verify-sound";const MAX_FAILED_ATTEMPTS=3;const LOCKOUT_SECONDS=10;let verifyAudioCtx=null;let failedAttempts=0;let lockoutTimer=null;function isVerifySoundOn(){return localStorage.getItem(VERIFY_SOUND_KEY)!=="off"}function syncVerifySoundBtn(){const btn=document.getElementById("verify-sound-btn");if(!btn)return;const on=isVerifySoundOn();btn.textContent=on?"🔊":"🔇";btn.classList.toggle("off",!on)}function toggleVerifySound(ev){if(ev)ev.stopPropagation();localStorage.setItem(VERIFY_SOUND_KEY,isVerifySoundOn()?"off":"on");syncVerifySoundBtn();if(isVerifySoundOn())playVerifyTone("tick")}function playVerifyTone(kind){if(!isVerifySoundOn())return;try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!verifyAudioCtx)verifyAudioCtx=new AC;if(verifyAudioCtx.state==="suspended")verifyAudioCtx.resume();const ctx=verifyAudioCtx;const now=ctx.currentTime;const notes={tick:[[880,0,.06,"square",.05]],ok:[[660,0,.11,"sine",.13],[880,.11,.11,"sine",.13],[1320,.22,.22,"sine",.13]],bad:[[200,0,.18,"sawtooth",.1],[140,.2,.3,"sawtooth",.1]],lockout:[[160,0,.14,"square",.08],[160,.2,.14,"square",.08],[160,.4,.14,"square",.08]]}[kind]||[];notes.forEach(([freq,start,dur,type,vol])=>{const osc=ctx.createOscillator();const gain=ctx.createGain();osc.type=type;osc.frequency.value=freq;gain.gain.setValueAtTime(1e-4,now+start);gain.gain.exponentialRampToValueAtTime(vol,now+start+.015);gain.gain.exponentialRampToValueAtTime(1e-4,now+start+dur);osc.connect(gain);gain.connect(ctx.destination);osc.start(now+start);osc.stop(now+start+dur+.02)})}catch(e){}}function vibrateVerify(pattern){try{if(navigator.vibrate)navigator.vibrate(pattern)}catch(e){}}function startLockout(){const btn=document.getElementById("gate-enter-btn");const errBox=document.getElementById("gate-error");if(!btn)return;let left=LOCKOUT_SECONDS;btn.disabled=true;clearInterval(lockoutTimer);const paint=()=>{btn.textContent="⏳ استنى "+left+" ثانية";errBox.textContent="محاولات كتير غلط. استنى "+left+" ثانية وحاول تاني."};paint();lockoutTimer=setInterval(()=>{left--;if(left<=0){clearInterval(lockoutTimer);btn.disabled=false;btn.textContent="دخول ✝️";errBox.textContent="";failedAttempts=0}else paint()},1e3)}function registerFailedAttempt(){failedAttempts++;if(failedAttempts>=MAX_FAILED_ATTEMPTS){setTimeout(()=>{const log=document.getElementById("verify-log");const div=document.createElement("div");div.innerHTML='<span class="v-bad">&gt;</span> <span class="v-bad">TOO MANY ATTEMPTS</span> <span class="v-dim-bad">[LOCKED '+LOCKOUT_SECONDS+"s]</span>";log.appendChild(div);playVerifyTone("lockout");vibrateVerify([120,60,120,60,120])},900);startLockout()}}function showVerifyWelcome(name){const el=document.getElementById("verify-welcome");if(!el||!name)return;el.textContent="أهلاً بيك يا "+name+" 👋";el.classList.add("show")}function runVerifyLines(lines){const log=document.getElementById("verify-log");lines.forEach(([html,delay])=>{setTimeout(()=>{const div=document.createElement("div");div.innerHTML=html;log.appendChild(div)},delay)})}let verifyProgressRaf=0;function setVerifyProgress(p){p=Math.max(0,Math.min(100,p));document.getElementById("verify-bar").style.width=p+"%";document.getElementById("verify-pct").textContent=Math.round(p)+"%"}function tweenVerifyProgress(to,ms){cancelAnimationFrame(verifyProgressRaf);const from=parseFloat(document.getElementById("verify-bar").style.width)||0;const t0=performance.now();const step=now=>{const k=Math.min(1,(now-t0)/ms);setVerifyProgress(from+(to-from)*k);if(k<1)verifyProgressRaf=requestAnimationFrame(step)};verifyProgressRaf=requestAnimationFrame(step)}function showVerifyOverlay(username){const overlay=document.getElementById("verify-overlay");const box=document.getElementById("verify-box");const log=document.getElementById("verify-log");const bar=document.getElementById("verify-bar");const pct=document.getElementById("verify-pct");const result=document.getElementById("verify-result");const resultSub=document.getElementById("verify-result-sub");const avatarWrap=document.getElementById("verify-avatar-wrap");box.classList.remove("fail","success");avatarWrap.classList.remove("has-photo");const welcomeEl=document.getElementById("verify-welcome");welcomeEl.classList.remove("show");welcomeEl.textContent="";syncVerifySoundBtn();playVerifyTone("tick");document.getElementById("verify-avatar-img").removeAttribute("src");disableVerifyDismissOnClick();log.innerHTML="";cancelAnimationFrame(verifyProgressRaf);setVerifyProgress(0);result.className="v-result";result.textContent="";resultSub.className="v-result-sub";resultSub.textContent="";overlay.classList.add("show");runVerifyLines([['<span class="v-ok">🔐</span> <span class="v-ok2">بنفتح اتصال آمن...</span>',150],['<span class="v-ok">👤</span> <span class="v-ok2">بنراجع حساب</span> <span class="v-hi">'+(username||"")+"</span>",650]]);tweenVerifyProgress(80,1100)}function resolveVerifyOverlay(outcome){const box=document.getElementById("verify-box");const bar=document.getElementById("verify-bar");const pct=document.getElementById("verify-pct");const result=document.getElementById("verify-result");const resultSub=document.getElementById("verify-result-sub");if(outcome==="ok"){box.classList.add("success");runVerifyLines([['<span class="v-ok">✓</span> <span class="v-ok2">البيانات سليمة</span>',0],['<span class="v-ok">✓</span> <span class="v-ok2">الاتصال بالسيرفر تمام</span>',260],['<span class="v-ok">✓</span> <span class="v-ok2">الصلاحيات اتفعّلت</span>',520]]);tweenVerifyProgress(100,350);setTimeout(()=>{result.textContent="✨ تم التحقق، أهلاً بيك";result.classList.add("show","ok");playVerifyTone("ok");vibrateVerify(80);failedAttempts=0},500);return}box.classList.add("fail");let lines=[];let subText="";if(outcome==="bad-user"){lines=[['<span class="v-bad">✕</span> <span class="v-dim-bad">اسم المستخدم مش موجود</span>',0],['<span class="v-bad">✕</span> <span class="v-dim-bad">وقفنا البحث</span>',260]];subText="اسم المستخدم غير موجود"}else if(outcome==="bad-pass"){lines=[['<span class="v-bad">✕</span> <span class="v-dim-bad">فحص كلمة المرور فشل</span>',0],['<span class="v-bad">✕</span> <span class="v-dim-bad">كلمة المرور مش مطابقة</span>',260]];subText="كلمة المرور غير صحيحة"}else if(outcome==="bad-disabled"){lines=[['<span class="v-bad">✕</span> <span class="v-dim-bad">حالة الحساب: موقوف</span>',0],['<span class="v-bad">✕</span> <span class="v-dim-bad">الإدارة أوقفت الدخول</span>',260]];subText="الحساب موقوف حاليًا"}else{lines=[['<span class="v-bad">✕</span> <span class="v-dim-bad">اسم المستخدم مش موجود</span>',0],['<span class="v-bad">✕</span> <span class="v-dim-bad">البيانات مش مطابقة</span>',260]];subText="اسم المستخدم وكلمة المرور غير صحيحين"}runVerifyLines(lines);tweenVerifyProgress(100,350);setTimeout(()=>{result.textContent="تعذّر الدخول";result.classList.add("show","bad");resultSub.textContent=subText;resultSub.classList.add("show");playVerifyTone("bad");vibrateVerify([60,40,60,40,200]);registerFailedAttempt()},450)}function hideVerifyOverlay(){document.getElementById("verify-overlay").classList.remove("show");disableVerifyDismissOnClick()}function setVerifyAvatar(photoUrl,displayName){if(!photoUrl)return;const wrap=document.getElementById("verify-avatar-wrap");const img=document.getElementById("verify-avatar-img");const nameEl=document.getElementById("verify-avatar-name");img.onerror=()=>wrap.classList.remove("has-photo");img.src=photoUrl;nameEl.textContent=displayName||"";wrap.classList.add("has-photo")}function verifyOverlayDismissHandler(){hideVerifyOverlay()}function enableVerifyDismissOnClick(){const overlay=document.getElementById("verify-overlay");setTimeout(()=>{overlay.addEventListener("click",verifyOverlayDismissHandler)},50)}function disableVerifyDismissOnClick(){const overlay=document.getElementById("verify-overlay");overlay.removeEventListener("click",verifyOverlayDismissHandler)}/* Father Control: interface permissions for the existing legacy login.
+function cxConfirmLogout(){var msg="متأكد إنك عايز تسجّل خروج من الإدارة؟";if(typeof showConfirmModal==="function"){showConfirmModal(msg,logout)}else if(confirm(msg)){logout()}}function logout(){try{document.documentElement.classList.remove("cx-boot-session")}catch(_){}try{sessionStorage.removeItem("shamamsa-account-loss-reload")}catch(_){}if(window.AttendanceAccess)window.AttendanceAccess.signOut();logActivity("تسجيل خروج","");clearServantSessionState();clearRememberedSession();location.reload()}function toggleGatePassVisibility(){const input=document.getElementById("gate-pass");const btn=document.getElementById("gate-pass-toggle");const isHidden=input.type==="password";input.type=isHidden?"text":"password";btn.textContent=isHidden?"🙈":"👁️"}const VERIFY_SOUND_KEY="shamamsa-verify-sound";const MAX_FAILED_ATTEMPTS=3;const LOCKOUT_SECONDS=10;let verifyAudioCtx=null;let failedAttempts=0;let lockoutTimer=null;function isVerifySoundOn(){return localStorage.getItem(VERIFY_SOUND_KEY)!=="off"}function syncVerifySoundBtn(){const btn=document.getElementById("verify-sound-btn");if(!btn)return;const on=isVerifySoundOn();btn.textContent=on?"🔊":"🔇";btn.classList.toggle("off",!on)}function toggleVerifySound(ev){if(ev)ev.stopPropagation();localStorage.setItem(VERIFY_SOUND_KEY,isVerifySoundOn()?"off":"on");syncVerifySoundBtn();if(isVerifySoundOn())playVerifyTone("tick")}function playVerifyTone(kind){if(!isVerifySoundOn())return;try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!verifyAudioCtx)verifyAudioCtx=new AC;if(verifyAudioCtx.state==="suspended")verifyAudioCtx.resume();const ctx=verifyAudioCtx;const now=ctx.currentTime;const notes={tick:[[880,0,.06,"square",.05]],ok:[[660,0,.11,"sine",.13],[880,.11,.11,"sine",.13],[1320,.22,.22,"sine",.13]],bad:[[200,0,.18,"sawtooth",.1],[140,.2,.3,"sawtooth",.1]],lockout:[[160,0,.14,"square",.08],[160,.2,.14,"square",.08],[160,.4,.14,"square",.08]]}[kind]||[];notes.forEach(([freq,start,dur,type,vol])=>{const osc=ctx.createOscillator();const gain=ctx.createGain();osc.type=type;osc.frequency.value=freq;gain.gain.setValueAtTime(1e-4,now+start);gain.gain.exponentialRampToValueAtTime(vol,now+start+.015);gain.gain.exponentialRampToValueAtTime(1e-4,now+start+dur);osc.connect(gain);gain.connect(ctx.destination);osc.start(now+start);osc.stop(now+start+dur+.02)})}catch(e){}}function vibrateVerify(pattern){try{if(navigator.vibrate)navigator.vibrate(pattern)}catch(e){}}function startLockout(){const btn=document.getElementById("gate-enter-btn");const errBox=document.getElementById("gate-error");if(!btn)return;let left=LOCKOUT_SECONDS;btn.disabled=true;clearInterval(lockoutTimer);const paint=()=>{btn.textContent="⏳ استنى "+left+" ثانية";errBox.textContent="محاولات كتير غلط. استنى "+left+" ثانية وحاول تاني."};paint();lockoutTimer=setInterval(()=>{left--;if(left<=0){clearInterval(lockoutTimer);btn.disabled=false;btn.textContent="دخول ✝️";errBox.textContent="";failedAttempts=0}else paint()},1e3)}function registerFailedAttempt(){failedAttempts++;if(failedAttempts>=MAX_FAILED_ATTEMPTS){setTimeout(()=>{const log=document.getElementById("verify-log");const div=document.createElement("div");div.innerHTML='<span class="v-bad">&gt;</span> <span class="v-bad">TOO MANY ATTEMPTS</span> <span class="v-dim-bad">[LOCKED '+LOCKOUT_SECONDS+"s]</span>";log.appendChild(div);playVerifyTone("lockout");vibrateVerify([120,60,120,60,120])},900);startLockout()}}function showVerifyWelcome(name){const el=document.getElementById("verify-welcome");if(!el||!name)return;el.textContent="أهلاً بيك يا "+name+" 👋";el.classList.add("show")}function runVerifyLines(lines){const log=document.getElementById("verify-log");lines.forEach(([html,delay])=>{setTimeout(()=>{const div=document.createElement("div");div.innerHTML=html;log.appendChild(div)},delay)})}let verifyProgressRaf=0;function setVerifyProgress(p){p=Math.max(0,Math.min(100,p));document.getElementById("verify-bar").style.width=p+"%";document.getElementById("verify-pct").textContent=Math.round(p)+"%"}function tweenVerifyProgress(to,ms){cancelAnimationFrame(verifyProgressRaf);const from=parseFloat(document.getElementById("verify-bar").style.width)||0;const t0=performance.now();const step=now=>{const k=Math.min(1,(now-t0)/ms);setVerifyProgress(from+(to-from)*k);if(k<1)verifyProgressRaf=requestAnimationFrame(step)};verifyProgressRaf=requestAnimationFrame(step)}function showVerifyOverlay(username){const overlay=document.getElementById("verify-overlay");const box=document.getElementById("verify-box");const log=document.getElementById("verify-log");const bar=document.getElementById("verify-bar");const pct=document.getElementById("verify-pct");const result=document.getElementById("verify-result");const resultSub=document.getElementById("verify-result-sub");const avatarWrap=document.getElementById("verify-avatar-wrap");box.classList.remove("fail","success");avatarWrap.classList.remove("has-photo");const welcomeEl=document.getElementById("verify-welcome");welcomeEl.classList.remove("show");welcomeEl.textContent="";syncVerifySoundBtn();playVerifyTone("tick");document.getElementById("verify-avatar-img").removeAttribute("src");disableVerifyDismissOnClick();log.innerHTML="";cancelAnimationFrame(verifyProgressRaf);setVerifyProgress(0);result.className="v-result";result.textContent="";resultSub.className="v-result-sub";resultSub.textContent="";overlay.classList.add("show");runVerifyLines([['<span class="v-ok">🔐</span> <span class="v-ok2">بنفتح اتصال آمن...</span>',150],['<span class="v-ok">👤</span> <span class="v-ok2">بنراجع حساب</span> <span class="v-hi">'+(username||"")+"</span>",650]]);tweenVerifyProgress(80,1100)}function resolveVerifyOverlay(outcome){const box=document.getElementById("verify-box");const bar=document.getElementById("verify-bar");const pct=document.getElementById("verify-pct");const result=document.getElementById("verify-result");const resultSub=document.getElementById("verify-result-sub");if(outcome==="ok"){box.classList.add("success");runVerifyLines([['<span class="v-ok">✓</span> <span class="v-ok2">البيانات سليمة</span>',0],['<span class="v-ok">✓</span> <span class="v-ok2">الاتصال بالسيرفر تمام</span>',260],['<span class="v-ok">✓</span> <span class="v-ok2">الصلاحيات اتفعّلت</span>',520]]);tweenVerifyProgress(100,350);setTimeout(()=>{result.textContent="✨ تم التحقق، أهلاً بيك";result.classList.add("show","ok");playVerifyTone("ok");vibrateVerify(80);failedAttempts=0},500);return}box.classList.add("fail");let lines=[];let subText="";if(outcome==="bad-user"){lines=[['<span class="v-bad">✕</span> <span class="v-dim-bad">اسم المستخدم مش موجود</span>',0],['<span class="v-bad">✕</span> <span class="v-dim-bad">وقفنا البحث</span>',260]];subText="اسم المستخدم غير موجود"}else if(outcome==="bad-pass"){lines=[['<span class="v-bad">✕</span> <span class="v-dim-bad">فحص كلمة المرور فشل</span>',0],['<span class="v-bad">✕</span> <span class="v-dim-bad">كلمة المرور مش مطابقة</span>',260]];subText="كلمة المرور غير صحيحة"}else if(outcome==="bad-disabled"){lines=[['<span class="v-bad">✕</span> <span class="v-dim-bad">حالة الحساب: موقوف</span>',0],['<span class="v-bad">✕</span> <span class="v-dim-bad">الإدارة أوقفت الدخول</span>',260]];subText="الحساب موقوف حاليًا"}else{lines=[['<span class="v-bad">✕</span> <span class="v-dim-bad">اسم المستخدم مش موجود</span>',0],['<span class="v-bad">✕</span> <span class="v-dim-bad">البيانات مش مطابقة</span>',260]];subText="اسم المستخدم وكلمة المرور غير صحيحين"}runVerifyLines(lines);tweenVerifyProgress(100,350);setTimeout(()=>{result.textContent="تعذّر الدخول";result.classList.add("show","bad");resultSub.textContent=subText;resultSub.classList.add("show");playVerifyTone("bad");vibrateVerify([60,40,60,40,200]);registerFailedAttempt()},450)}function hideVerifyOverlay(){document.getElementById("verify-overlay").classList.remove("show");disableVerifyDismissOnClick()}function setVerifyAvatar(photoUrl,displayName){if(!photoUrl)return;const wrap=document.getElementById("verify-avatar-wrap");const img=document.getElementById("verify-avatar-img");const nameEl=document.getElementById("verify-avatar-name");img.onerror=()=>wrap.classList.remove("has-photo");img.src=photoUrl;nameEl.textContent=displayName||"";wrap.classList.add("has-photo")}function verifyOverlayDismissHandler(){hideVerifyOverlay()}function enableVerifyDismissOnClick(){const overlay=document.getElementById("verify-overlay");setTimeout(()=>{overlay.addEventListener("click",verifyOverlayDismissHandler)},50)}function disableVerifyDismissOnClick(){const overlay=document.getElementById("verify-overlay");overlay.removeEventListener("click",verifyOverlayDismissHandler)}/* Father Control: interface permissions for the existing legacy login.
    This is NOT a replacement for Firebase Security Rules. See README-AR.md. */
 const FATHER_CONTROL_PAGE = 'father-control.html';
 function canManageFatherAccounts() {
@@ -4105,7 +4264,84 @@ function applyLevelStyle(){var v="a";try{v=localStorage.getItem("shamamsa-lv-sty
 window.setLevelStyle=function(v){if(["a","b","c"].indexOf(v)<0)return;try{localStorage.setItem("shamamsa-lv-style",v)}catch(e){}applyLevelStyle()};
 function syncLevelSubVisibility(){try{var f=(typeof getColFilters==="function")?getColFilters():{level:true};document.querySelectorAll('#records-table [data-col="name"] .lv-sub').forEach(function(el){el.style.display=f.level!==false?"":"none"});var g=(typeof getFailingColFilters==="function")?getFailingColFilters():{level:true};document.querySelectorAll('#failing-table [data-col="name"] .lv-sub').forEach(function(el){el.style.display=g.level!==false?"":"none"})}catch(e){}}
 if(document.readyState!=="loading"){try{applyLevelStyle()}catch(e){}}else{document.addEventListener("DOMContentLoaded",function(){try{applyLevelStyle()}catch(e){}})}
-const CURRICULUM_PATH="shamamsa-curriculum";const CURRICULUM_TERM_BREAKS_PATH="shamamsa-curriculum-term-breaks";let CURRICULUM_TERM_BREAKS={};let allRecords=[];let nameSuggestActiveIndex=-1;let nameSuggestCurrentList=[];function onNameFieldInput(input){const typed=input.value.trim();nameSuggestActiveIndex=-1;const box=document.getElementById("name-suggest-box");if(!typed){hideNameSuggestions();return}const editId=document.getElementById("edit-id").value;const normalized=typed.toLowerCase();const matches=allRecords.filter(r=>r.id!==editId&&(r.name||"").trim().toLowerCase().startsWith(normalized)).slice(0,12);nameSuggestCurrentList=matches;if(!matches.length){hideNameSuggestions();return}box.innerHTML=matches.map((r,i)=>{const avatar=r.photoUrl?`<img src="${escapeHtml(r.photoUrl)}" alt="">`:escapeHtml((r.name||"").trim().charAt(0)||"؟");const chips=[];if(r.rank)chips.push(`<span class="name-suggest-chip rank-chip">${escapeHtml(r.rank)}</span>`);if(r.level)chips.push(`<span class="name-suggest-chip">${escapeHtml(r.level)}</span>`);if(r.year)chips.push(`<span class="name-suggest-chip">${escapeHtml(r.year)}</span>`);if(r.deaconPhone)chips.push(`<span class="name-suggest-chip phone-chip">📱 ${toArabicDigits(r.deaconPhone)}</span>`);return`\n            <div class="name-suggest-item" data-idx="${i}" onmousedown="selectNameSuggestion('${r.id}')">\n                <div class="name-suggest-avatar">${avatar}</div>\n                <div class="name-suggest-body">\n                    <div class="name-suggest-name">${escapeHtml(r.name||"")}</div>\n                    ${chips.length?`<div class="name-suggest-meta">${chips.join("")}</div>`:""}\n                </div>\n            </div>`}).join("");box.style.display="block"}function onNameSuggestKeydown(e){const box=document.getElementById("name-suggest-box");if(box.style.display==="none"||!nameSuggestCurrentList.length)return;const items=box.querySelectorAll(".name-suggest-item");if(e.key==="ArrowDown"){e.preventDefault();nameSuggestActiveIndex=Math.min(nameSuggestActiveIndex+1,items.length-1)}else if(e.key==="ArrowUp"){e.preventDefault();nameSuggestActiveIndex=Math.max(nameSuggestActiveIndex-1,0)}else if(e.key==="Enter"){if(nameSuggestActiveIndex>=0&&nameSuggestCurrentList[nameSuggestActiveIndex]){e.preventDefault();selectNameSuggestion(nameSuggestCurrentList[nameSuggestActiveIndex].id)}return}else if(e.key==="Escape"){hideNameSuggestions();return}else{return}items.forEach((it,i)=>it.classList.toggle("active-suggest",i===nameSuggestActiveIndex));const activeItem=items[nameSuggestActiveIndex];if(activeItem)activeItem.scrollIntoView({block:"nearest"})}function selectNameSuggestion(id){hideNameSuggestions();editRecord(id)}function hideNameSuggestions(){const box=document.getElementById("name-suggest-box");if(box){box.style.display="none";box.innerHTML=""}nameSuggestActiveIndex=-1;nameSuggestCurrentList=[]}let dbReady=false;const ATTENDANCE_PATH="shamamsa-attendance";let attAllAttendanceData=null;let latestFinalizedStatusByName={};function showApp(){if(currentServantRole==="father"){["cxLogout","cxDrawerLogout","logout-btn"].forEach(function(id){var b=document.getElementById(id);if(b){if(id==="logout-btn")b.style.display="none";else b.hidden=true}});goToFatherControl(currentServantUsername);return;}document.getElementById("gate-wrap").style.display="none";document.getElementById("app-content").style.display="block";document.getElementById("logout-btn").style.display="none";["cxLogout","cxDrawerLogout"].forEach(function(id){var b=document.getElementById(id);if(b)b.hidden=false});try{if(window.perfCheckAfterLogin)perfCheckAfterLogin()}catch(_){}setTimeout(()=>{try{autoSlimFirebaseForRealtimeConsole()}catch(_){}},2500);initDbSync();applyRolePermissions();renderTable();initServantsSync();initResultsGate();initCurrentServantLiveSync();const defaultTab=roleDefaultTab(currentServantRole,currentServantPermissions);if(!defaultTab){showNoPermissionsScreen();return}const savedTab=sessionStorage.getItem(LAST_TAB_KEY);const startTab=savedTab&&roleAllowsTab(currentServantRole,savedTab,currentServantPermissions)?savedTab:defaultTab;switchTab(startTab)}let currentServantLiveSyncStarted=false;function initCurrentServantLiveSync(){if(currentServantLiveSyncStarted)return;if(!currentServantUsername||isFullAccess())return;currentServantLiveSyncStarted=true;let firstSnapshot=true;waitForFirebase().then(()=>{const meRef=window._dbRef(window._db,SERVANTS_PATH+"/"+currentServantUsername);window._dbOnValue(meRef,snapshot=>{const data=snapshot.val();if(!data||data.disabled){clearServantSessionState();clearRememberedSession();location.reload();return}const freshRole=data.role||"servant";if(freshRole==="father"){clearServantSessionState();clearRememberedSession();goToFatherControl(currentServantUsername);return}const freshPerms=Array.isArray(data.permissions)?data.permissions:[];const changed=freshRole!==currentServantRole||JSON.stringify(freshPerms.slice().sort())!==JSON.stringify((currentServantPermissions||[]).slice().sort());if(firstSnapshot){firstSnapshot=false;if(changed){currentServantRole=freshRole;currentServantPermissions=freshPerms;sessionStorage.setItem(SESSION_ROLE_KEY,currentServantRole);sessionStorage.setItem(SESSION_PERMISSIONS_KEY,JSON.stringify(currentServantPermissions));try{const raw=localStorage.getItem(REMEMBER_KEY);if(raw){const rdata=JSON.parse(raw);if(rdata&&(rdata.username||"").toLowerCase()===currentServantUsername.toLowerCase()){rdata.role=currentServantRole;rdata.permissions=currentServantPermissions;localStorage.setItem(REMEMBER_KEY,JSON.stringify(rdata))}}}catch(e){}applyRolePermissions();const nextTab=roleDefaultTab(currentServantRole,currentServantPermissions);if(!nextTab){showNoPermissionsScreen();return}const savedTab=sessionStorage.getItem(LAST_TAB_KEY);switchTab(savedTab&&roleAllowsTab(currentServantRole,savedTab,currentServantPermissions)?savedTab:nextTab)}return}if(!changed)return;currentServantRole=freshRole;currentServantPermissions=freshPerms;sessionStorage.setItem(SESSION_ROLE_KEY,currentServantRole);sessionStorage.setItem(SESSION_PERMISSIONS_KEY,JSON.stringify(currentServantPermissions));try{const raw=localStorage.getItem(REMEMBER_KEY);if(raw){const rdata=JSON.parse(raw);if(rdata&&(rdata.username||"").toLowerCase()===currentServantUsername.toLowerCase()){rdata.role=currentServantRole;rdata.permissions=currentServantPermissions;localStorage.setItem(REMEMBER_KEY,JSON.stringify(rdata))}}}catch(e){}location.reload()})})}function showNoPermissionsScreen(){const wrap=document.getElementById("app-content");if(wrap){wrap.innerHTML='<div style="max-width:480px; margin:60px auto; text-align:center; padding:24px;">'+'<div style="font-size:2rem; margin-bottom:12px;">🔒</div>'+'<div style="font-size:1.1rem; font-weight:700; color:var(--brand-dark); margin-bottom:8px;">لسه معندكش أي صلاحية متحددة</div>'+'<div style="color:#6b5a42; font-size:0.95rem;">كلم إدارة المدرسة عشان تحدد لك الأقسام اللي تقدر تشوفها وتشتغل عليها.</div>'+"</div>"}}function applyRolePermissions(){
+const CURRICULUM_PATH="shamamsa-curriculum";const CURRICULUM_TERM_BREAKS_PATH="shamamsa-curriculum-term-breaks";let CURRICULUM_TERM_BREAKS={};let allRecords=[];let nameSuggestActiveIndex=-1;let nameSuggestCurrentList=[];function onNameFieldInput(input){const typed=input.value.trim();nameSuggestActiveIndex=-1;const box=document.getElementById("name-suggest-box");if(!typed){hideNameSuggestions();return}const editId=document.getElementById("edit-id").value;const normalized=typed.toLowerCase();const matches=allRecords.filter(r=>r.id!==editId&&(r.name||"").trim().toLowerCase().startsWith(normalized)).slice(0,12);nameSuggestCurrentList=matches;if(!matches.length){hideNameSuggestions();return}box.innerHTML=matches.map((r,i)=>{const avatar=r.photoUrl?`<img src="${escapeHtml(r.photoUrl)}" alt="">`:escapeHtml((r.name||"").trim().charAt(0)||"؟");const chips=[];if(r.rank)chips.push(`<span class="name-suggest-chip rank-chip">${escapeHtml(r.rank)}</span>`);if(r.level)chips.push(`<span class="name-suggest-chip">${escapeHtml(r.level)}</span>`);if(r.year)chips.push(`<span class="name-suggest-chip">${escapeHtml(r.year)}</span>`);if(r.deaconPhone)chips.push(`<span class="name-suggest-chip phone-chip">📱 ${toArabicDigits(r.deaconPhone)}</span>`);return`\n            <div class="name-suggest-item" data-idx="${i}" onmousedown="selectNameSuggestion('${r.id}')">\n                <div class="name-suggest-avatar">${avatar}</div>\n                <div class="name-suggest-body">\n                    <div class="name-suggest-name">${escapeHtml(r.name||"")}</div>\n                    ${chips.length?`<div class="name-suggest-meta">${chips.join("")}</div>`:""}\n                </div>\n            </div>`}).join("");box.style.display="block"}function onNameSuggestKeydown(e){const box=document.getElementById("name-suggest-box");if(box.style.display==="none"||!nameSuggestCurrentList.length)return;const items=box.querySelectorAll(".name-suggest-item");if(e.key==="ArrowDown"){e.preventDefault();nameSuggestActiveIndex=Math.min(nameSuggestActiveIndex+1,items.length-1)}else if(e.key==="ArrowUp"){e.preventDefault();nameSuggestActiveIndex=Math.max(nameSuggestActiveIndex-1,0)}else if(e.key==="Enter"){if(nameSuggestActiveIndex>=0&&nameSuggestCurrentList[nameSuggestActiveIndex]){e.preventDefault();selectNameSuggestion(nameSuggestCurrentList[nameSuggestActiveIndex].id)}return}else if(e.key==="Escape"){hideNameSuggestions();return}else{return}items.forEach((it,i)=>it.classList.toggle("active-suggest",i===nameSuggestActiveIndex));const activeItem=items[nameSuggestActiveIndex];if(activeItem)activeItem.scrollIntoView({block:"nearest"})}function selectNameSuggestion(id){hideNameSuggestions();editRecord(id)}function hideNameSuggestions(){const box=document.getElementById("name-suggest-box");if(box){box.style.display="none";box.innerHTML=""}nameSuggestActiveIndex=-1;nameSuggestCurrentList=[]}let dbReady=false;const ATTENDANCE_PATH="shamamsa-attendance";let attAllAttendanceData=null;let latestFinalizedStatusByName={};function showApp(){if(currentServantRole==="father"){["cxLogout","cxDrawerLogout","logout-btn"].forEach(function(id){var b=document.getElementById(id);if(b){if(id==="logout-btn")b.style.display="none";else b.hidden=true}});goToFatherControl(currentServantUsername);return;}document.getElementById("gate-wrap").style.display="none";document.getElementById("app-content").style.display="block";document.getElementById("logout-btn").style.display="none";["cxLogout","cxDrawerLogout"].forEach(function(id){var b=document.getElementById(id);if(b)b.hidden=false});try{if(window.perfCheckAfterLogin)perfCheckAfterLogin()}catch(_){}setTimeout(()=>{try{autoSlimFirebaseForRealtimeConsole()}catch(_){}},2500);initDbSync();applyRolePermissions();renderTable();initServantsSync();initResultsGate();initCurrentServantLiveSync();const defaultTab=roleDefaultTab(currentServantRole,currentServantPermissions);if(!defaultTab){showNoPermissionsScreen();return}const savedTab=sessionStorage.getItem(LAST_TAB_KEY);const startTab=savedTab&&roleAllowsTab(currentServantRole,savedTab,currentServantPermissions)?savedTab:defaultTab;switchTab(startTab)}let currentServantLiveSyncStarted=false;let currentServantLiveSyncFirst=true;
+/* إنهاء الجلسة لما نتأكد فعلًا إن الحساب اتوقف أو اتمسح — مع قاطع يمنع الحلقة */
+function endServantSessionAfterAccountLoss(){
+  try{
+    var last=Number(sessionStorage.getItem('shamamsa-account-loss-reload'))||0;
+    if(Date.now()-last<60000)return;               /* منع اللف في حلقة إعادة تحميل */
+    sessionStorage.setItem('shamamsa-account-loss-reload',String(Date.now()));
+  }catch(_){}
+  try{document.documentElement.classList.remove('cx-boot-session')}catch(_){}
+  try{if(window.AttendanceAccess&&window.AttendanceAccess.signOut)window.AttendanceAccess.signOut()}catch(_){}
+  clearServantSessionState();clearRememberedSession();
+  try{location.reload()}catch(_){}
+}
+/* تطبيق صلاحيات الحساب في نفس الصفحة — من غير إعادة تحميل (لا «دخول وخروج») */
+function applyLiveServantSnapshot(account,isFirst,resolvedKey){
+  const freshRole=(account&&account.role)||"servant";
+  if(freshRole==="father"){
+    clearServantSessionState();clearRememberedSession();
+    goToFatherControl(resolvedKey||currentServantUsername);return;
+  }
+  if(resolvedKey&&resolvedKey!==currentServantUsername){
+    currentServantUsername=resolvedKey;
+    try{sessionStorage.setItem(SESSION_USERNAME_KEY,resolvedKey)}catch(_){}
+    try{const raw=localStorage.getItem(REMEMBER_KEY);if(raw){const rd=JSON.parse(raw);
+      if(rd&&String(rd.username||"").trim().toLowerCase()===String(resolvedKey).trim().toLowerCase()){
+        rd.username=resolvedKey;localStorage.setItem(REMEMBER_KEY,JSON.stringify(rd))}}}catch(_){}
+  }
+  const freshPerms=account&&Array.isArray(account.permissions)?account.permissions.slice():[];
+  const changed=freshRole!==currentServantRole||
+    JSON.stringify(freshPerms.slice().sort())!==JSON.stringify((currentServantPermissions||[]).slice().sort());
+  if(!changed)return;
+  currentServantRole=freshRole;currentServantPermissions=freshPerms;
+  try{sessionStorage.setItem(SESSION_ROLE_KEY,currentServantRole);
+      sessionStorage.setItem(SESSION_PERMISSIONS_KEY,JSON.stringify(currentServantPermissions))}catch(_){}
+  try{const raw=localStorage.getItem(REMEMBER_KEY);if(raw){const rd=JSON.parse(raw);
+    if(rd&&String(rd.username||"").trim().toLowerCase()===String(currentServantUsername).trim().toLowerCase()){
+      rd.role=currentServantRole;rd.permissions=currentServantPermissions;
+      localStorage.setItem(REMEMBER_KEY,JSON.stringify(rd))}}}catch(_){}
+  try{if(window.SkillNotes&&window.SkillNotes.accountChanged)window.SkillNotes.accountChanged()}catch(_){}
+  try{applyRolePermissions()}catch(_){}
+  const nextTab=roleDefaultTab(currentServantRole,currentServantPermissions);
+  if(!nextTab){showNoPermissionsScreen();return}
+  let savedTab=null;try{savedTab=sessionStorage.getItem(LAST_TAB_KEY)}catch(_){}
+  const wanted=savedTab&&roleAllowsTab(currentServantRole,savedTab,currentServantPermissions)?savedTab:nextTab;
+  if(!isFirst||!savedTab||wanted!==savedTab)switchTab(wanted);
+}
+function initCurrentServantLiveSync(){
+  if(currentServantLiveSyncStarted)return;
+  if(!currentServantUsername||isFullAccess())return;
+  currentServantLiveSyncStarted=true;
+  waitForFirebase().then(()=>{
+    const meRef=window._dbRef(window._db,SERVANTS_PATH+"/"+currentServantUsername);
+    window._dbOnValue(meRef,snapshot=>{
+      const data=snapshot.val();
+      if(data){
+        if(data.disabled===true){endServantSessionAfterAccountLoss();return}
+        applyLiveServantSnapshot(data,currentServantLiveSyncFirst,currentServantUsername);
+        currentServantLiveSyncFirst=false;
+        return;
+      }
+      /* لا نسجّل خروج من لقطة فارغة: Firebase بيرجع null لو مفتاح الحساب فيه
+         فرق حالة حروف أو مسافة. نتأكد الأول بحمل قائمة الخدام ومطابقة الاسم
+         بدون حساسية لحالة الحروف — ولو الشبكة فشلت نُبقي الجلسة كما هي. */
+      try{
+        window._dbGet(window._dbRef(window._db,SERVANTS_PATH)).then(all=>{
+          const map=all&&all.val?all.val():null;
+          const target=String(currentServantUsername||"").trim().toLowerCase();
+          const key=map?Object.keys(map).find(k=>String(k).trim().toLowerCase()===target):null;
+          const found=key?map[key]:null;
+          if(!found||found.disabled===true){endServantSessionAfterAccountLoss();return}
+          applyLiveServantSnapshot(found,currentServantLiveSyncFirst,key);
+          currentServantLiveSyncFirst=false;
+        }).catch(()=>{});
+      }catch(_){}
+    });
+  });
+}
+function showNoPermissionsScreen(){const wrap=document.getElementById("app-content");if(wrap){wrap.innerHTML='<div style="max-width:480px; margin:60px auto; text-align:center; padding:24px;">'+'<div style="font-size:2rem; margin-bottom:12px;">🔒</div>'+'<div style="font-size:1.1rem; font-weight:700; color:var(--brand-dark); margin-bottom:8px;">لسه معندكش أي صلاحية متحددة</div>'+'<div style="color:#6b5a42; font-size:0.95rem;">كلم إدارة المدرسة عشان تحدد لك الأقسام اللي تقدر تشوفها وتشتغل عليها.</div>'+"</div>"}}function applyRolePermissions(){
   try{window.SkillNotes?.accountChanged()}catch(_){}
   const tabBtnMap={deacons:"tab-btn-deacons",birthdays:"tab-btn-birthdays",attendance:"tab-btn-attendance",vespers:"tab-btn-vespers",hayaty:"tab-btn-hayaty",train:"tab-btn-train",harp:"tab-btn-harp",curriculum:"tab-btn-curriculum",servants:"tab-btn-servants",log:"tab-btn-log",failing:"tab-btn-failing",myprofile:"tab-btn-myprofile"};
   Object.entries(tabBtnMap).forEach(([tab,btnId])=>{setPermElVisible(btnId,roleAllowsTab(currentServantRole,tab,currentServantPermissions))});
@@ -4132,17 +4368,19 @@ const CURRICULUM_PATH="shamamsa-curriculum";const CURRICULUM_TERM_BREAKS_PATH="s
   if(typeof refreshBottomNav==="function")refreshBottomNav();
 }const RESULTS_GATE_PATH="settings/resultsOpen";let resultsGateCurrent=null;function renderResultsGate(isOpen){resultsGateCurrent=isOpen;const icon=document.getElementById("rgb-icon");const status=document.getElementById("rgb-status");const btn=document.getElementById("rgb-toggle-btn");btn.disabled=false;if(isOpen){icon.textContent="🔓";status.textContent="مفتوحة";status.className="on";btn.textContent="اقفل الصفحة 🔒";btn.classList.add("is-open")}else{icon.textContent="🔒";status.textContent="مغلقة";status.className="off";btn.textContent="افتح الصفحة 🔓";btn.classList.remove("is-open")}}async function initResultsGate(){renderResultsGate(true);try{await Promise.race([waitForFirebase(),new Promise((_,reject)=>setTimeout(()=>reject(new Error("firebase-timeout")),2500))]);const snap=await Promise.race([window._dbGet(window._dbRef(window._db,RESULTS_GATE_PATH)),new Promise((_,reject)=>setTimeout(()=>reject(new Error("results-gate-timeout")),2500))]);renderResultsGate(snap.val()!==false)}catch(err){console.warn("تعذر تحديث حالة صفحة النتيجة الآن:",err.message||err)}}async function toggleResultsGate(){if(!roleAllowsTab(currentServantRole,"resultsGate",currentServantPermissions)){showAppAlert("معندكش صلاحية التحكم في صفحة النتيجة.","error");return}const btn=document.getElementById("rgb-toggle-btn");const next=!resultsGateCurrent;btn.disabled=true;try{await waitForFirebase();await Promise.race([window._dbSet(window._dbRef(window._db,RESULTS_GATE_PATH),next),new Promise((_,reject)=>setTimeout(()=>reject(new Error("save-timeout")),5e3))]);renderResultsGate(next);logActivity(next?"فتح صفحة النتيجة":"قفل صفحة النتيجة","")}catch(err){console.error("فشل تحديث حالة صفحة النتيجة:",err);showAppAlert("حصلت مشكلة في الاتصال، جرّب تاني.","error");btn.disabled=false}}function fetchFreshServantPermissions(username){return waitForFirebase().then(()=>new Promise(resolve=>{const meRef=window._dbRef(window._db,SERVANTS_PATH+"/"+username);let settled=false;const finish=val=>{if(!settled){settled=true;resolve(val)}};setTimeout(()=>finish(null),6e3);window._dbOnValue(meRef,snapshot=>{const data=snapshot.val();finish(data?{role:data.role||"servant",permissions:Array.isArray(data.permissions)?data.permissions:[]}:null)},()=>finish(null),{onlyOnce:true})}))}(function autoLogin(){
   function enterApp(name,role,username,permissions){
+    try{sessionStorage.removeItem("shamamsa-account-loss-reload")}catch(_){}
     currentServantRole=role||"admin";currentServantUsername=username||"";currentServantDisplayName=name||"";currentServantPermissions=permissions||[];try{window.SkillNotes?.accountChanged()}catch(_){}
     sessionStorage.setItem(SESSION_KEY,name);sessionStorage.setItem(SESSION_ROLE_KEY,currentServantRole);sessionStorage.setItem(SESSION_USERNAME_KEY,currentServantUsername);sessionStorage.setItem(SESSION_PERMISSIONS_KEY,JSON.stringify(currentServantPermissions));showApp();
   }
+  function revealGate(){try{document.documentElement.classList.remove("cx-boot-session")}catch(_){}}
   function run(){
     let name=null,role=null,username=null,permissions=null;
     if(sessionStorage.getItem(SESSION_KEY)){
       name=sessionStorage.getItem(SESSION_KEY);role=sessionStorage.getItem(SESSION_ROLE_KEY)||"admin";username=sessionStorage.getItem(SESSION_USERNAME_KEY)||"";
       try{permissions=JSON.parse(sessionStorage.getItem(SESSION_PERMISSIONS_KEY)||"[]")}catch(e){permissions=[]}
-      if(username&&expireActiveRememberedSession(username))return;
+      if(username&&expireActiveRememberedSession(username)){revealGate();return}
     }else{
-      const remembered=getRememberedSession();if(!remembered)return;
+      const remembered=getRememberedSession();if(!remembered){revealGate();return}
       name=remembered;role=currentServantRole;username=currentServantUsername;permissions=currentServantPermissions;
     }
     if(role==="father"){
@@ -7828,7 +8066,7 @@ window.PR_openDeaconProfile = async function (recId) {
 <a href="synaxarium.html">السنكسار</a>
 <a href="agpeya.html">الأجبية</a>
 <a href="calendar.html">التقويم القبطي</a><a href="library.html">المكتبة ومصادر</a>
-<a href="shamamsa-admin.html">دخول الإدارة</a>
+<a class="cx-admin-entry" href="shamamsa-admin.html">دخول الإدارة</a>
 <a class="cx-priest-entry" href="father-control.html">دخول الأب الكاهن</a></nav>
 <div class="cx-foot-meta">
 <h4>اليوم الكنسي</h4>
@@ -16052,7 +16290,8 @@ html.dark #offline-sync-modal .osm-item{
           if(!hadController)return;
           if(sessionStorage.getItem("shamamsa-sw-reloaded")==="1")return;
           sessionStorage.setItem("shamamsa-sw-reloaded","1");
-          location.reload();
+          if(window.shamamsaSafeReload)window.shamamsaSafeReload("sw-controllerchange");
+          else location.reload();
         }catch(_){}
       });
     }
@@ -31735,4 +31974,4 @@ html.dark .wa-sent-line{background:rgba(255,255,255,.05)}
 })();
 </script>
 
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5769b334bd0eda6',t:'MTc5NDE2MjE3OQ=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a5769b334bd0eda6',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body> </html>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5769b334bd0eda6',t:'MTc5NDE2MjE3OQ=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a5769b334bd0eda6',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a57f19cfeac9ed43',t:'MTc5NDI1MTI1MQ=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a57f19cfeac9ed43',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body> </html>
